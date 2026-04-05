@@ -35,51 +35,54 @@ Floom <- Floom %>%
     Percent.Change.in.Green = X..Change.in.Green,
     Percent.Change.in.Cyano = X..Change.in.Cyano)
 
-Floom_pct <- Floom %>%
-  pivot_longer(cols = starts_with("Percent.Change"),
-               names_to = "variable.percent",
-               values_to = "pct_change") 
 
-Floom_AV <- Floom %>%
-  pivot_longer(cols = starts_with("Absolute"),
-               names_to = "variable.absolute",
-               values_to = "AV") 
-
-library(dplyr)
-library(tidyr)
-
-Floom_Long <- Floom %>%
+# Pivot percent change
+pct <- Floom %>%
   pivot_longer(
     cols = starts_with("Percent.Change"),
     names_to = "variable_pct",
     values_to = "pct_change"
-  ) %>%
+  )%>%
+  select(Trial, Slope, Sediment.Type, Rock.ID, Rock.Dimensions..L.x.W.x.H..mm.,  variable_pct, pct_change,)  # keep extra columns
+# Pivot absolute values
+abs <- Floom %>%
   pivot_longer(
     cols = starts_with("Absolute"),
     names_to = "variable_abs",
     values_to = "AV"
-  ) %>%
-  # keep only rows where the numeric part matches (if applicable)
-  mutate(variable_id = row_number())  # temporary row identifier to align
+  )%>%
+  select(Trial, variable_abs, AV)
 
-# Join them by common keys and variable
-Floom_Long <- Floom_pct %>%
-  left_join(Floom_AV, by = c("Trial", "Slope", "Sediment.Type", "variable"))
+Floom_Long <- pct %>%
+  group_by(Trial) %>%              
+  mutate(variable_id = row_number()) %>%  # temporary row number
+  ungroup() %>%
+  left_join(
+    abs %>%
+      group_by(Trial) %>%
+      mutate(variable_id = row_number()) %>%
+      ungroup(),
+    by = c("Trial", "variable_id")
+  ) %>%
+  select(-variable_id)  # drop temporary row identifier
+
 
 Floom_Long$Trial <- factor(Floom_Long$Trial)
 Floom_Long$Slope <- factor(Floom_Long$Slope, levels = c("Low", "Medium", "High"))
 Floom_Long$Sediment.Type <- factor(Floom_Long$Sediment.Type,
                                    levels = c("None", "Sand", "Gravel"))
 
+
 # Trials on x--------------------------------
-ggplot(Floom_Long, aes(x = Trial, y = pct_change)) +
-  geom_boxplot(aes(fill = Sediment.Type, color = Slope),
-               position = position_dodge2(width = 0.8),
-               alpha = 0.7) +
-  geom_jitter(aes(color = Slope),
-              width = 0.2,
-              alpha = 0.5,
-              size = 1.5) +
+
+ggplot(Floom_Long, aes(x = Trial, y = pct_change, color = Slope)) +
+  geom_boxplot(aes(fill = Sediment.Type),
+               position = position_dodge(width = 0.8),
+               alpha = 0.7,
+               outlier.shape = NA) + # add this to avoid double dots if you want raw data displayed
+  geom_jitter(position = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.8),
+             size = 1.5,
+             alpha = 0.6) +
   facet_wrap(~ variable_pct, scales = "free_y") +
   labs(x = "Trial",
        y = "% Change",
@@ -87,20 +90,22 @@ ggplot(Floom_Long, aes(x = Trial, y = pct_change)) +
        color = "Slope") +
   theme_classic()
 
-ggplot(Floom_Long, aes(x = Trial, y = AV)) +
-  geom_boxplot(aes(fill = Sediment.Type, color = Slope),
-               position = position_dodge2(width = 0.8),
-               alpha = 0.7) +
-  geom_jitter(aes(color = Slope),
-              width = 0.2,
-              alpha = 0.5,
-              size = 1.5) +
+
+ggplot(Floom_Long, aes(x = Trial, y = AV, color = Slope)) +
+  geom_boxplot(aes(fill = Sediment.Type),
+               position = position_dodge(width = 0.8),
+               alpha = 0.7,
+               outlier.shape = NA) +
+  geom_jitter(position = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.8),
+              size = 1.5,
+              alpha = 0.6) +
   facet_wrap(~ variable_abs, scales = "free_y") +
   labs(x = "Trial",
        y = "Before-After value",
        fill = "Sediment Type",
        color = "Slope") +
   theme_classic()
+
 
 
 # Define comparisons (pairs of x-axis groups)
@@ -121,7 +126,7 @@ my_comparisons <- list(
   c("7", "8")
 )
 
-# Compute pairwise t-tests for % change
+# Compute pairwise t-tests for % change-------------
 res <- compare_means(
   pct_change ~ Trial,
   data = Floom_Long,
@@ -132,11 +137,6 @@ res <- compare_means(
 
 # Keep only significant results
 sig_res <- res %>% filter(p < 0.05)
-
-sig_res <- sig_res %>%
-  rowwise() %>%
-  filter(list(c(as.character(group1), as.character(group2))) %in% my_comparisons) %>%
-  ungroup()
 
 sig_res <- sig_res %>%
   rowwise() %>%
@@ -160,11 +160,12 @@ sig_res <- sig_res %>%
 ggplot(Floom_Long, aes(x = factor(Trial), y = pct_change, fill = Sediment.Type)) +
   geom_boxplot(aes(color = Slope),
                position = position_dodge2(width = 0.8),
-               alpha = 0.7) +
+               alpha = 0.7,
+               outlier.shape = NA) + 
   geom_jitter(aes(color = Slope),
-              width = 0.2,
-              alpha = 0.5,
-              size = 1.5) +
+              position = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.8),
+              size = 1.5,
+              alpha = 0.6) +
   facet_wrap(~ variable_pct, scales = "free_y") +
   labs(x = "Trial",
        y = "% Change",
@@ -180,8 +181,7 @@ ggplot(Floom_Long, aes(x = factor(Trial), y = pct_change, fill = Sediment.Type))
 
 
 
-
-# Compute pairwise t-tests for AV
+# Compute pairwise t-tests for AV--------------
 res <- compare_means(
   AV ~ Trial,
   data = Floom_Long,
@@ -214,7 +214,8 @@ sig_res <- sig_res %>%
 ggplot(Floom_Long, aes(x = factor(Trial), y = AV, fill = Sediment.Type)) +
   geom_boxplot(aes(color = Slope),
                position = position_dodge2(width = 0.8),
-               alpha = 0.7) +
+               alpha = 0.7,
+               outlier.shape = NA) +
   geom_jitter(aes(color = Slope),
               width = 0.2,
               alpha = 0.5,
@@ -236,17 +237,16 @@ ggplot(Floom_Long, aes(x = factor(Trial), y = AV, fill = Sediment.Type)) +
 
 # % change
 ggplot(Floom_Long, aes(x = Slope, y = pct_change, fill = Sediment.Type, color = Sediment.Type)) +
-  geom_boxplot(position = position_dodge2(width = 0.8), alpha = 0.7) +
-  geom_jitter(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
-              alpha = 0.5, size = 1.5) +
+  geom_boxplot(position = position_dodge2(width = 0.8), alpha = 0.7, outlier.shape = NA) +
+  geom_jitter(position = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.8),
+              size = 1.5,
+              alpha = 0.6) +
   facet_wrap(~ variable_pct, scales = "free_y") +
   labs(x = "Slope", y = "% Change", fill = "Sediment Type", color = "Sediment Type") +
   theme_classic() +
   scale_fill_brewer(palette = "Set2") +
   scale_color_brewer(palette = "Set2") +
   theme(legend.position = "top")
-
-
 
 my_comparisons <- list(
   c("Low", "Medium"),
@@ -283,14 +283,14 @@ sig_res <- sig_res %>%
 
 # % change Plot
 
-ggplot(Floom_Long, aes(x = Slope, y = pct_change, fill = Sediment.Type, color = Sediment.Type)) +
-  geom_boxplot(position = position_dodge2(width = 0.8), alpha = 0.7) +
-  geom_jitter(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
-              alpha = 0.5, size = 1.5) +
+ggplot(Floom_Long, aes(x = Slope, y = pct_change, fill = Sediment.Type, colour = Sediment.Type)) +
+  geom_boxplot(position = position_dodge(width = 0.8), alpha = 0.7, outlier.shape = NA) +
+  geom_jitter(aes(color = Sediment.Type),
+              position = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.8),
+              size = 1.5,
+              alpha = 0.6) +
   facet_wrap(~ variable_pct, scales = "free_y") +
-  labs(x = "Trial",
-       y = "% Change",
-       fill = "Sediment Type") +
+  labs(x = "Slope", y = "% Change", fill = "Sediment Type", color = "Sediment Type") +
   stat_pvalue_manual(
     sig_res,
     label = "p.signif"
@@ -334,7 +334,7 @@ sig_res <- sig_res %>%
 
 # AV change
 ggplot(Floom_Long, aes(x = Slope, y = AV, fill = Sediment.Type, color = Sediment.Type)) +
-  geom_boxplot(position = position_dodge2(width = 0.8), alpha = 0.7) +
+  geom_boxplot(position = position_dodge2(width = 0.8), alpha = 0.7, outlier.shape = NA) +
   geom_jitter(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
               alpha = 0.5, size = 1.5) +
   facet_wrap(~ variable_abs, scales = "free_y") +
@@ -348,8 +348,9 @@ ggplot(Floom_Long, aes(x = Slope, y = AV, fill = Sediment.Type, color = Sediment
 # Sediment on X-----------------------------
 
 # % change
+
 ggplot(Floom_Long, aes(x = Sediment.Type, y = pct_change, fill = Slope, color = Slope)) +
-  geom_boxplot(position = position_dodge2(width = 0.8), alpha = 0.7) +
+  geom_boxplot(position = position_dodge2(width = 0.8), alpha = 0.7, outlier.shape = NA) +
   geom_jitter(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
               alpha = 0.5, size = 1.5) +
   facet_wrap(~ variable_pct, scales = "free_y") +
@@ -361,7 +362,7 @@ ggplot(Floom_Long, aes(x = Sediment.Type, y = pct_change, fill = Slope, color = 
 
 # AV change
 ggplot(Floom_Long, aes(x = Sediment.Type, y = AV, fill = Slope, color = Slope)) +
-  geom_boxplot(position = position_dodge2(width = 0.8), alpha = 0.7) +
+  geom_boxplot(position = position_dodge2(width = 0.8), alpha = 0.7, outlier.shape = NA) +
   geom_jitter(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
               alpha = 0.5, size = 1.5) +
   facet_wrap(~ variable_abs, scales = "free_y") +
@@ -405,7 +406,7 @@ sig_res <- sig_res %>%
 # Plot
 
 ggplot(Floom_Long, aes(x = Sediment.Type, y = pct_change, fill = Slope, color = Slope)) +
-  geom_boxplot(position = position_dodge2(width = 0.8), alpha = 0.7) +
+  geom_boxplot(position = position_dodge2(width = 0.8), alpha = 0.7, outlier.shape = NA) +
   geom_jitter(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
               alpha = 0.5, size = 1.5) +
   facet_wrap(~ variable_pct, scales = "free_y") +
@@ -452,7 +453,7 @@ sig_res <- sig_res %>%
 # Plot AV
 
 ggplot(Floom_Long, aes(x = Sediment.Type, y = AV, fill = Slope, color = Slope)) +
-  geom_boxplot(position = position_dodge2(width = 0.8), alpha = 0.7) +
+  geom_boxplot(position = position_dodge2(width = 0.8), alpha = 0.7, outlier.shape = NA) +
   geom_jitter(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
               alpha = 0.5, size = 1.5) +
   facet_wrap(~ variable_abs, scales = "free_y") +
@@ -475,9 +476,9 @@ Floom_Long_nogreen <- Floom_Long %>%
 
 model_results <- list() # Loop through each variable
 
-for(v in unique(Floom_Long$variable)) {
+for(v in unique(Floom_Long$variable_pct)) {
   
-  subset <- Floom_Long %>% filter(variable == v) # Subset data
+  subset <- Floom_Long %>% filter(variable_pct == v) # Subset data
   
   floom_interaction <- lmer(pct_change ~ Slope + Sediment.Type + (1|Trial), data = subset) # Fit mixed model
   
@@ -492,24 +493,3 @@ model_results[["Percent.Change.High.Mat.Thickness"]]
 model_results[["Percent.Change.Low.Mat.Thickness"]]
 model_results[["Percent.Change.in.Cyano"]]
 model_results[["Percent.Change.in.Green"]]
-
-# Loop through each variable
-model_results <- list()
-
-for(v in unique(Floom_Long$variable)) {
-  
-  # subset data
-  df <- Floom_Long %>% filter(variable == v)
-  
-  # fit mixed model
-  mod <- lmer(pct_change ~ Slope * Sediment.Type + (1|Site), data = df)
-  
-  # save summary
-  model_results[[v]] <- summary(mod)
-  
-}
-
-# check results for one variable
-model_results[["Variable1"]]  # replace with actual variable name
-
-
