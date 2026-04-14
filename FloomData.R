@@ -24,7 +24,7 @@ library(multcompView)
 setwd("~/Library/CloudStorage/OneDrive-Colostate/Flume experiment/Data/FlumeR")
 
 # Flume data!
-Floom <- read.csv("FlumeData.csv")
+Floom <- read.csv("FlumeDataFinal.csv")
 
 Floom <- Floom %>%
   rename(
@@ -37,34 +37,41 @@ Floom <- Floom %>%
 
 
 # Pivot percent change
-pct <- Floom %>%
+# name this pct if you want to use code below which combines abs and pct into a different Floom_Long
+Floom_Long <- Floom %>%
   pivot_longer(
     cols = starts_with("Percent.Change"),
     names_to = "variable_pct",
     values_to = "pct_change"
   )%>%
   select(Trial, Slope, Sediment.Type, Rock.ID, Rock.Dimensions..L.x.W.x.H..mm.,  variable_pct, pct_change,)  # keep extra columns
-# Pivot absolute values
-abs <- Floom %>%
-  pivot_longer(
-    cols = starts_with("Absolute"),
-    names_to = "variable_abs",
-    values_to = "AV"
-  )%>%
-  select(Trial, variable_abs, AV)
 
-Floom_Long <- pct %>%
-  group_by(Trial) %>%              
-  mutate(variable_id = row_number()) %>%  # temporary row number
-  ungroup() %>%
-  left_join(
-    abs %>%
-      group_by(Trial) %>%
-      mutate(variable_id = row_number()) %>%
-      ungroup(),
-    by = c("Trial", "variable_id")
-  ) %>%
-  select(-variable_id)  # drop temporary row identifier
+
+# Making % change absolute values
+Floom_Long <- Floom_Long %>%
+  mutate(pct_change = abs(pct_change))
+
+# Pivot absolute values
+#abs <- Floom %>%
+ # pivot_longer(
+  #  cols = starts_with("Absolute"),
+   # names_to = "variable_abs",
+    #values_to = "AV"
+  # )%>%
+  # select(Trial, variable_abs, AV)
+
+#Floom_Long <- pct %>%
+ # group_by(Trial) %>%              
+  # mutate(variable_id = row_number()) %>%  # temporary row number
+  # ungroup() %>%
+  # left_join(
+   # abs %>%
+    #  group_by(Trial) %>%
+     # mutate(variable_id = row_number()) %>%
+      # ungroup(),
+   # by = c("Trial", "variable_id")
+  # ) %>%
+ # select(-variable_id)  # drop temporary row identifier
 
 
 Floom_Long$Trial <- factor(Floom_Long$Trial)
@@ -118,12 +125,15 @@ my_comparisons <- list(
   c("2", "5"),
   c("2", "8"),
   c("3", "6"),
+  c("3", "9"),
   c("4", "5"),
   c("4", "6"),
   c("4", "7"),
   c("5", "6"),
   c("5", "8"),
-  c("7", "8")
+  c("6", "9"),
+  c("7", "8"),
+  c("7", "9")
 )
 
 # Compute pairwise t-tests for % change-------------
@@ -493,3 +503,7 @@ model_results[["Percent.Change.High.Mat.Thickness"]]
 model_results[["Percent.Change.Low.Mat.Thickness"]]
 model_results[["Percent.Change.in.Cyano"]]
 model_results[["Percent.Change.in.Green"]]
+
+
+
+
