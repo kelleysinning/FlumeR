@@ -21,10 +21,10 @@ install.packages("multcompView")
 library(multcompView)
 
 # Set working directory 
-setwd("~/Library/CloudStorage/OneDrive-Colostate/Flume experiment/Data/FlumeR")
+setwd("~/Library/CloudStorage/OneDrive-TheUniversityofMontana/Flume experiment/Data/FlumeR")
 
 # Flume data!
-Floom <- read.csv("FlumeDataFinal.csv")
+Floom <- read.csv("CSV.R.csv")
 
 Floom <- Floom %>%
   rename(
@@ -33,7 +33,11 @@ Floom <- Floom %>%
     Percent.Change.High.Mat.Thickness = X..Change..in.High.Impact..Mat.Thickness,
     Percent.Change.in.Diatoms = X..Change.in.Diatom,
     Percent.Change.in.Green = X..Change.in.Green,
-    Percent.Change.in.Cyano = X..Change.in.Cyano)
+    Percent.Change.in.Cyano = X..Change.in.Cyano,
+    Percent.Change.in.High.Mat.AFDM = X..Change..in.High.Impact.AFDM,
+    Percent.Change.in.Low.Mat.AFDM = X..Change..in.Low.Impact.AFDM)
+
+str(Floom)
 
 
 # Pivot percent change
@@ -44,7 +48,7 @@ Floom_Long <- Floom %>%
     names_to = "variable_pct",
     values_to = "pct_change"
   )%>%
-  select(Trial, Slope, Sediment.Type, Rock.ID, Rock.Dimensions..L.x.W.x.H..mm.,  variable_pct, pct_change,)  # keep extra columns
+  select(Trial, Slope, Sediment.Type, Rock.ID,  variable_pct, pct_change,)  # keep extra columns
 
 
 # Making % change absolute values
@@ -77,7 +81,7 @@ Floom_Long <- Floom_Long %>%
 Floom_Long$Trial <- factor(Floom_Long$Trial)
 Floom_Long$Slope <- factor(Floom_Long$Slope, levels = c("Low", "Medium", "High"))
 Floom_Long$Sediment.Type <- factor(Floom_Long$Sediment.Type,
-                                   levels = c("None", "Sand", "Gravel"))
+                                   levels = c("None", "Sand ", "Gravel"))
 
 
 # Trials on x--------------------------------
