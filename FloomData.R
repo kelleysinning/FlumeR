@@ -27,6 +27,9 @@ setwd("~/Library/CloudStorage/OneDrive-TheUniversityofMontana/Flume experiment/D
 Floom <- read.csv("CSV.R.csv")
 
 Floom <- Floom %>%
+  mutate(
+    across(starts_with("X..Change"), ~ as.numeric(as.character(.)))
+  )%>%
   rename(
     Trial = Trial..,   # old name = a → new name = new_a
     Percent.Change.Low.Mat.Thickness = X..Change..in.Low.Impact..Mat.Thickness,
@@ -368,7 +371,7 @@ ggplot(Floom_Long, aes(x = Sediment.Type, y = pct_change, fill = Slope, color = 
   geom_jitter(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
               alpha = 0.5, size = 1.5) +
   facet_wrap(~ variable_pct, scales = "free_y") +
-  labs(x = "Slope", y = "% Change", fill = "Slope", color = "Slope") +
+  labs(x = "Sediment", y = "% Change", fill = "Slope", color = "Slope") +
   theme_classic() +
   scale_fill_brewer(palette = "Set2") +
   scale_color_brewer(palette = "Set2") +
