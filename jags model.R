@@ -18,3 +18,5 @@ model {
   
   phi ~ dgamma(0.01, 0.01)   # precision parameter
 }
+
+

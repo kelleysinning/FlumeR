@@ -85,6 +85,10 @@ Floom_Long$Trial <- factor(Floom_Long$Trial)
 Floom_Long$Slope <- factor(Floom_Long$Slope, levels = c("Low", "Medium", "High"))
 Floom_Long$Sediment.Type <- factor(Floom_Long$Sediment.Type,
                                    levels = c("None", "Sand ", "Gravel"))
+Floom_Long$variable_pct <- factor(Floom_Long$variable_pct,
+                                   levels = c("Percent.Change.High.Mat.Thickness", "Percent.Change.Low.Mat.Thickness", 
+                                              "Percent.Change.in.High.Mat.AFDM", "Percent.Change.in.Low.Mat.AFDM",
+                                              "Percent.Change.in.Diatoms"))
 
 
 # Trials on x--------------------------------
@@ -251,6 +255,10 @@ ggplot(Floom_Long, aes(x = factor(Trial), y = AV, fill = Sediment.Type)) +
   theme_classic()
 
 # Slopes on X-----------------------------
+Floom_Long <- Floom_Long %>%
+  filter(variable_pct != "Percent.Change.in.Green") %>%
+  filter(variable_pct != "Percent.Change.in.Cyano") %>%
+  filter(!(variable_pct == "Percent.Change.in.Low.Mat.AFDM" & pct_change > 1000)) # Target the specific outlier
 
 # % change
 ggplot(Floom_Long, aes(x = Slope, y = pct_change, fill = Sediment.Type, color = Sediment.Type)) +
@@ -258,7 +266,7 @@ ggplot(Floom_Long, aes(x = Slope, y = pct_change, fill = Sediment.Type, color = 
   geom_jitter(position = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.8),
               size = 1.5,
               alpha = 0.6) +
-  facet_wrap(~ variable_pct, scales = "free_y") +
+  facet_wrap(~ variable_pct, nrow = 3, ncol = 2, scales = "free_y") +
   labs(x = "Slope", y = "% Change", fill = "Sediment Type", color = "Sediment Type") +
   theme_classic() +
   scale_fill_brewer(palette = "Set2") +

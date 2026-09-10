@@ -4,7 +4,9 @@
 library(tidyr)
 library(dplyr)
 library(ggplot2)
+install.packages("jagsUI")
 library(jagsUI)
+install.packages("MCMCvis")
 library(MCMCvis)
 
 ###
