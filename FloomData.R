@@ -55,30 +55,9 @@ Floom_Long <- Floom %>%
 
 
 # Making % change absolute values
+# This will lose information about the AFDM that is "added" after each trial 
 Floom_Long <- Floom_Long %>%
   mutate(pct_change = abs(pct_change))
-
-# Pivot absolute values
-#abs <- Floom %>%
- # pivot_longer(
-  #  cols = starts_with("Absolute"),
-   # names_to = "variable_abs",
-    #values_to = "AV"
-  # )%>%
-  # select(Trial, variable_abs, AV)
-
-#Floom_Long <- pct %>%
- # group_by(Trial) %>%              
-  # mutate(variable_id = row_number()) %>%  # temporary row number
-  # ungroup() %>%
-  # left_join(
-   # abs %>%
-    #  group_by(Trial) %>%
-     # mutate(variable_id = row_number()) %>%
-      # ungroup(),
-   # by = c("Trial", "variable_id")
-  # ) %>%
- # select(-variable_id)  # drop temporary row identifier
 
 
 Floom_Long$Trial <- factor(Floom_Long$Trial)
@@ -107,24 +86,6 @@ ggplot(Floom_Long, aes(x = Trial, y = pct_change, color = Slope)) +
        fill = "Sediment Type",
        color = "Slope") +
   theme_classic()
-
-
-ggplot(Floom_Long, aes(x = Trial, y = AV, color = Slope)) +
-  geom_boxplot(aes(fill = Sediment.Type),
-               position = position_dodge(width = 0.8),
-               alpha = 0.7,
-               outlier.shape = NA) +
-  geom_jitter(position = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.8),
-              size = 1.5,
-              alpha = 0.6) +
-  facet_wrap(~ variable_abs, scales = "free_y") +
-  labs(x = "Trial",
-       y = "Before-After value",
-       fill = "Sediment Type",
-       color = "Slope") +
-  theme_classic()
-
-
 
 # Define comparisons (pairs of x-axis groups)
 my_comparisons <- list(
@@ -201,59 +162,6 @@ ggplot(Floom_Long, aes(x = factor(Trial), y = pct_change, fill = Sediment.Type))
   theme_classic()
 
 
-
-# Compute pairwise t-tests for AV--------------
-res <- compare_means(
-  AV ~ Trial,
-  data = Floom_Long,
-  group.by = "variable_abs",
-  method = "t.test",
-  p.adjust.method = "BH"
-)
-# Keep only significant results
-sig_res <- res %>% filter(p < 0.05)
-
-sig_res <- sig_res %>%
-  rowwise() %>%
-  filter(list(c(as.character(group1), as.character(group2))) %in% my_comparisons) %>%
-  ungroup()
-
-# Compute max pct_change per variable
-y_pos <- Floom_Long %>%
-  group_by(variable_abs) %>%
-  summarise(y.position = max(AV, na.rm = TRUE) * 1.05, .groups = "drop")
-
-# Join y-position to significant results
-sig_res <- sig_res %>%
-  left_join(y_pos, by = "variable_abs") %>%
-  group_by(variable_abs) %>%
-  # Stagger bars slightly to prevent overlap
-  mutate(y.position = y.position + row_number() * 0.1 * y.position) %>%
-  ungroup()
-
-# Plot for AV
-ggplot(Floom_Long, aes(x = factor(Trial), y = AV, fill = Sediment.Type)) +
-  geom_boxplot(aes(color = Slope),
-               position = position_dodge2(width = 0.8),
-               alpha = 0.7,
-               outlier.shape = NA) +
-  geom_jitter(aes(color = Slope),
-              width = 0.2,
-              alpha = 0.5,
-              size = 1.5) +
-  facet_wrap(~ variable_abs, scales = "free_y") +
-  labs(x = "Trial",
-       y = "Before-After value",
-       fill = "Sediment Type",
-       color = "Slope") +
-  stat_pvalue_manual(
-    sig_res,
-    label = "p.signif",
-    y.position = "y.position",   # your computed starting y
-    #step.increase = 0.05 * max(Floom_Long$pct_change, na.rm = TRUE)
-  ) +
-  theme_classic()
-
 # Slopes on X-----------------------------
 Floom_Long <- Floom_Long %>%
   filter(variable_pct != "Percent.Change.in.Green") %>%
@@ -327,49 +235,6 @@ ggplot(Floom_Long, aes(x = Slope, y = pct_change, fill = Sediment.Type, colour =
 
 
 
-# For AV
-
-
-# Compute pairwise t-tests
-res <- compare_means(
-  AV ~ Slope,
-  data = Floom_Long,
-  group.by = "variable_abs",
-  method = "t.test",
-  p.adjust.method = "BH"
-)
-
-# Keep only significant results
-sig_res <- res %>% filter(p < 0.05)
-
-
-# Max pct_change per variable from full dataset
-y_pos <- Floom_Long %>%
-  group_by(variable_abs) %>%
-  summarise(y.position = max(pct_change, na.rm = TRUE) * 1.05, .groups = "drop")
-
-
-# Join y-position to significant results
-sig_res <- sig_res %>%
-  left_join(y_pos, by = "variable_abs") %>%
-  group_by(variable_abs) %>%
-  # Stagger bars slightly to prevent overlap
-  mutate(y.position = y.position + row_number() * 0.05 * y.position) %>%
-  ungroup()
-
-# AV change
-ggplot(Floom_Long, aes(x = Slope, y = AV, fill = Sediment.Type, color = Sediment.Type)) +
-  geom_boxplot(position = position_dodge2(width = 0.8), alpha = 0.7, outlier.shape = NA) +
-  geom_jitter(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
-              alpha = 0.5, size = 1.5) +
-  facet_wrap(~ variable_abs, scales = "free_y") +
-  labs(x = "Slope", y = "Before-After value", fill = "Sediment Type", color = "Sediment Type") +
-  theme_classic() +
-  scale_fill_brewer(palette = "Set2") +
-  scale_color_brewer(palette = "Set2") +
-  theme(legend.position = "top")
-
-
 # Sediment on X-----------------------------
 
 # % change
@@ -385,22 +250,6 @@ ggplot(Floom_Long, aes(x = Sediment.Type, y = pct_change, fill = Slope, color = 
   scale_color_brewer(palette = "Set2") +
   theme(legend.position = "top")
 
-# AV change
-ggplot(Floom_Long, aes(x = Sediment.Type, y = AV, fill = Slope, color = Slope)) +
-  geom_boxplot(position = position_dodge2(width = 0.8), alpha = 0.7, outlier.shape = NA) +
-  geom_jitter(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
-              alpha = 0.5, size = 1.5) +
-  facet_wrap(~ variable_abs, scales = "free_y") +
-  labs(x = "Slope", y = "% Change", fill = "Slope", color = "Slope") +
-  theme_classic() +
-  scale_fill_brewer(palette = "Set2") +
-  scale_color_brewer(palette = "Set2") +
-  theme(legend.position = "top")
-
-my_comparisons <- list(
-  c("None", "Sand"),
-  c("None", "Gravel"),
-  c("Sand", "Gravel"))
 
 # Compute pairwise t-tests for %
 res <- compare_means(
@@ -448,51 +297,6 @@ ggplot(Floom_Long, aes(x = Sediment.Type, y = pct_change, fill = Slope, color = 
   theme(legend.position = "top")
 
 
-
-# Compute pairwise t-tests for AV
-res <- compare_means(
-  pct_change ~ Sediment.Type,
-  data = Floom_Long,
-  group.by = "variable_abs",
-  method = "t.test",
-  p.adjust.method = "BH"
-)
-
-# Keep only significant results
-sig_res <- res %>% filter(p < 0.05)
-
-# Max pct_change per variable from full dataset
-y_pos <- Floom_Long %>%
-  group_by(variable_abs) %>%
-  summarise(y.position = max(pct_change, na.rm = TRUE) * 1.05, .groups = "drop")
-
-# Join y-position to significant results
-sig_res <- sig_res %>%
-  left_join(y_pos, by = "variable_abs") %>%
-  group_by(variable_abs) %>%
-  # Stagger bars slightly to prevent overlap
-  mutate(y.position = y.position + row_number() * 0.05 * y.position) %>%
-  ungroup()
-
-
-# Plot AV
-
-ggplot(Floom_Long, aes(x = Sediment.Type, y = AV, fill = Slope, color = Slope)) +
-  geom_boxplot(position = position_dodge2(width = 0.8), alpha = 0.7, outlier.shape = NA) +
-  geom_jitter(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
-              alpha = 0.5, size = 1.5) +
-  facet_wrap(~ variable_abs, scales = "free_y") +
-  labs(x = "Sediment.Type",
-       y = "Before-After value",
-       fill = "Slope") +
-  stat_pvalue_manual(
-    sig_res,
-    label = "p.signif"
-  ) +
-  theme_classic() +
-  scale_fill_brewer(palette = "Set2") +
-  scale_color_brewer(palette = "Set2") +
-  theme(legend.position = "top")
 
 # Running stats--------------------
 
