@@ -44,7 +44,6 @@ str(Floom)
 
 
 # Pivot percent change
-# name this pct if you want to use code below which combines abs and pct into a different Floom_Long
 Floom_Long <- Floom %>%
   pivot_longer(
     cols = starts_with("Percent.Change"),
@@ -56,8 +55,8 @@ Floom_Long <- Floom %>%
 
 # Making % change absolute values
 # This will lose information about the AFDM that is "added" after each trial 
-Floom_Long <- Floom_Long %>%
-  mutate(pct_change = abs(pct_change))
+#Floom_Long <- Floom_Long %>%
+  #mutate(pct_change = abs(pct_change))
 
 
 Floom_Long$Trial <- factor(Floom_Long$Trial)
