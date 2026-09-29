@@ -296,33 +296,3 @@ ggplot(Floom_Long, aes(x = Sediment.Type, y = pct_change, fill = Slope, color = 
   scale_color_brewer(palette = "Set2") +
   theme(legend.position = "top")
 
-
-
-# Running stats--------------------
-
-Floom_Long_nogreen <- Floom_Long %>%
-  filter(variable != "Percent.Change.in.Green")
-
-model_results <- list() # Loop through each variable
-
-for(v in unique(Floom_Long$variable_pct)) {
-  
-  subset <- Floom_Long %>% filter(variable_pct == v) # Subset data
-  
-  floom_interaction <- lmer(pct_change ~ Slope + Sediment.Type + (1|Trial), data = subset) # Fit mixed model
-  
-  model_results[[v]] <- summary(floom_interaction) # Save summary
-}
-
-
-
-# check results for one variable
-model_results[["Percent.Change.in.Diatoms"]]  
-model_results[["Percent.Change.High.Mat.Thickness"]]
-model_results[["Percent.Change.Low.Mat.Thickness"]]
-model_results[["Percent.Change.in.Cyano"]]
-model_results[["Percent.Change.in.Green"]]
-
-
-
-
