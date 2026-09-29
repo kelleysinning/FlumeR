@@ -5,6 +5,8 @@
 
 #load important packages#
 library(ggplot2)
+library(patchwork)
+install.packages("patchwork")
 library(gridExtra)
 library(viridis)
 library(ggthemes)
@@ -59,17 +61,18 @@ ggplot(Floom, aes(x = Front.Shear.Stress,
   facet_wrap(~ Sediment.Type) +
   theme_classic() # this is real ugly
 
-ggplot(Floom, aes(x = Front.Shear.Stress, 
+plot1 <- ggplot(Floom, aes(x = Front.Shear.Stress, 
                   y = Percent.Change.in.High.Mat.AFDM, 
                   color = Slope)) +
   geom_point(size = 2.5, alpha = 0.8) +
   facet_wrap(~ Sediment.Type) +
   coord_cartesian(xlim = c(0, 75)) +  # Zooms in to hide the empty space up to 200
-  theme_bw()
+  theme_bw()+
+  theme(legend.position = "none")
 
 
 # How does shear stress on the back of rock remove AFDM on back (i.e., low impact section) of rock?
-ggplot(Floom, aes(x = Back.Shear.Stress, 
+plot2 <- ggplot(Floom, aes(x = Back.Shear.Stress, 
                   y = Percent.Change.in.Low.Mat.AFDM, 
                   color = Slope)) +
   geom_point(size = 2.5, alpha = 0.8) +
@@ -77,19 +80,23 @@ ggplot(Floom, aes(x = Back.Shear.Stress,
   coord_cartesian(xlim = c(0, 80), ylim = c(-100,260)) +  # Zooms in to hide the empty space up to 200
   theme_bw()
 
+
+plot1 + plot2
+
 ## SHEAR VELOCITY x AFDM ##
 # How does shear velocity on the front of rock remove AFDM on front (i.e., high impact section) of rock?
-ggplot(Floom, aes(x = Front.Shear.Velocity, 
+plot3 <- ggplot(Floom, aes(x = Front.Shear.Velocity, 
                   y = Percent.Change.in.High.Mat.AFDM, 
                   color = Slope)) +
   geom_point(size = 2.5, alpha = 0.8) +
   facet_wrap(~ Sediment.Type) +
   coord_cartesian(xlim = c(0, 0.50)) +  # Zooms in to hide the empty space up to 200
-  theme_bw()
+  theme_bw()+
+  theme(legend.position = "none")
 
 
 # How does shear velocity on the back of rock remove AFDM on back (i.e., low impact section) of rock?
-ggplot(Floom, aes(x = Back.Shear.Velocity, 
+plot4 <- ggplot(Floom, aes(x = Back.Shear.Velocity, 
                   y = Percent.Change.in.Low.Mat.AFDM, 
                   color = Slope)) +
   geom_point(size = 2.5, alpha = 0.8) +
@@ -98,40 +105,43 @@ ggplot(Floom, aes(x = Back.Shear.Velocity,
   theme_bw()
 
 
-
+plot3 + plot4
 ## SHEAR STRESS x MAT THICKESS ##
 # How does shear stress on the front of rock remove mat thickness on front (i.e., high impact section) of rock?
 
-ggplot(Floom, aes(x = Front.Shear.Stress, 
+plot5 <- ggplot(Floom, aes(x = Front.Shear.Stress, 
                   y = Percent.Change.High.Mat.Thickness, 
                   color = Slope)) +
   geom_point(size = 2.5, alpha = 0.8) +
   facet_wrap(~ Sediment.Type) +
-  theme_bw()
+  theme_bw()+
+  theme(legend.position = "none")
 
 
 # How does shear stress on the back of rock remove mat thickness on back (i.e., low impact section) of rock?
-ggplot(Floom, aes(x = Back.Shear.Stress, 
+plot6 <- ggplot(Floom, aes(x = Back.Shear.Stress, 
                   y = Percent.Change.Low.Mat.Thickness, 
                   color = Slope)) +
   geom_point(size = 2.5, alpha = 0.8) +
   facet_wrap(~ Sediment.Type) +
   theme_bw()
 
+plot5 + plot6
 
 ## SHEAR VELOCITY x MAT THICKESS ##
 # How does shear velocity on the front of rock remove mat thickness on front (i.e., high impact section) of rock?
 
-ggplot(Floom, aes(x = Front.Shear.Velocity, 
+plot7 <- ggplot(Floom, aes(x = Front.Shear.Velocity, 
                   y = Percent.Change.High.Mat.Thickness, 
                   color = Slope)) +
   geom_point(size = 2.5, alpha = 0.8) +
   facet_wrap(~ Sediment.Type) +
-  theme_bw()
+  theme_bw()+
+  theme(legend.position = "none")
 
 
 # How does shear velocity on the back of rock remove mat thickness on back (i.e., low impact section) of rock?
-ggplot(Floom, aes(x = Back.Shear.Velocity, 
+plot8 <- ggplot(Floom, aes(x = Back.Shear.Velocity, 
                   y = Percent.Change.Low.Mat.Thickness, 
                   color = Slope)) +
   geom_point(size = 2.5, alpha = 0.8) +
@@ -139,20 +149,22 @@ ggplot(Floom, aes(x = Back.Shear.Velocity,
   theme_bw()
 
 
+plot7 + plot8
 
 ## SHEAR STRESS x DIATOMS ##
 # How does shear stress on the front of rock remove diatoms across rock?
 
-ggplot(Floom, aes(x = Front.Shear.Stress, 
+plot9 <- ggplot(Floom, aes(x = Front.Shear.Stress, 
                   y = Percent.Change.in.Diatoms, 
                   color = Slope)) +
   geom_point(size = 2.5, alpha = 0.8) +
   facet_wrap(~ Sediment.Type) +
-  theme_bw()
+  theme_bw()+
+  theme(legend.position = "none")
 
 
 # How does shear stress on the back of rock remove diatoms across rock?
-ggplot(Floom, aes(x = Back.Shear.Stress, 
+plot10 <- ggplot(Floom, aes(x = Back.Shear.Stress, 
                   y = Percent.Change.in.Diatoms, 
                   color = Slope)) +
   geom_point(size = 2.5, alpha = 0.8) +
@@ -160,22 +172,28 @@ ggplot(Floom, aes(x = Back.Shear.Stress,
   theme_bw()
 
 
+plot9 + plot10
 
 ## SHEAR VELOCITY x DIATOMS ##
 # How does shear velocity on the front of rock remove diatoms across rock?
 
-ggplot(Floom, aes(x = Front.Shear.Velocity, 
+plot11 <- ggplot(Floom, aes(x = Front.Shear.Velocity, 
                   y = Percent.Change.in.Diatoms, 
                   color = Slope)) +
   geom_point(size = 2.5, alpha = 0.8) +
   facet_wrap(~ Sediment.Type) +
-  theme_bw()
+  theme_bw()+
+  theme(legend.position = "none")
 
 
 # How does shear stress on the back of rock remove diatoms across rock?
-ggplot(Floom, aes(x = Back.Shear.Velocity, 
+plot12 <- ggplot(Floom, aes(x = Back.Shear.Velocity, 
                   y = Percent.Change.in.Diatoms, 
                   color = Slope)) +
   geom_point(size = 2.5, alpha = 0.8) +
   facet_wrap(~ Sediment.Type) +
   theme_bw()
+
+plot11 + plot12
+
+plot1 + plot2 + plot3 + plot4 + plot5 + plot6 + plot7 + plot8 + plot9 + plot10 + plot11 + plot12
