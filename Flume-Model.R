@@ -181,3 +181,12 @@ ggplot(dat, aes(x = hydraulic, y = removal)) +
   xlab("Hydraulic Metric") +
   ylab("Percent Reduction in Didymo") +
   theme_bw()
+
+
+
+# Run t-test or paired t-test of hydraulic values of front and back of each rock
+  # check for collinearity 
+
+# could do a derived quantity between sand and gravel and med and high
+
+# separate model for diatoms, single value per rock, average front and back velocity
