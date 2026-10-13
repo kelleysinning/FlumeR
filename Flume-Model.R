@@ -276,3 +276,6 @@ exp(out$mean$gamma2) # percent change in diatoms is 1.33x more likely to occur i
 exp(out$mean$gamma3) # percent change in diatoms is 0.93x more likely to occur in sand treatments than no sediment treatments
 exp(out$mean$gamma4) # percent change in diatoms is 1.3x more likely to occur in gravel treatments than no sediment treatments
 
+
+# next...keep trying to understand what is happening
+# look at derived quantities between treatments (e.g., mid vs high)
