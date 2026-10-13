@@ -5,7 +5,8 @@ model {
     b[i] <- (1 - mu[i]) * phi
     logit(mu[i]) <- gamma0 + gamma1*slopeMedInd[i] + gamma2*slopeHighInd[i] +
       gamma3*SandInd[i] + gamma4*GravelInd[i] +
-      gamma5*hydraulic[i] + gamma6*FrontInd[i] +
+      #gamma5*hydraulic[i] + 
+      gamma5*FrontInd[i] +
       u[rock[i]]
   }
   
@@ -17,6 +18,6 @@ model {
   # Priors
   gamma0 ~ dnorm(0, 0.1); gamma1 ~ dnorm(0, 0.1); gamma2 ~ dnorm(0, 0.1)
   gamma3 ~ dnorm(0, 0.1); gamma4 ~ dnorm(0, 0.1); gamma5 ~ dnorm(0, 0.1)
-  gamma6 ~ dnorm(0, 0.1)
+  #gamma6 ~ dnorm(0, 0.1)
   phi ~ dgamma(0.1, 0.1)
 }

@@ -64,8 +64,10 @@ Front.Back$Position <- factor(Front.Back$Position, levels = c("Front", "Back"))
 
 names(Front.Back)
 
+
+# FRONT BACK MODEL---------------------------------------------------------
 # Choose the response: Percent.Change.in.AFDM or Percent.Change.Mat.Thickness
-resp <- "Percent.Change.in.AFDM"
+resp <- "Percent.Change.Mat.Thickness"
 
 dat <- Front.Back %>%
   mutate(
@@ -84,11 +86,9 @@ sum(Front.Back$Percent.Change.in.AFDM > 0, na.rm = TRUE)   # how many increases 
 
 
 
-### Run Beta Regression Model in JAGS
-
+# Run Beta Regression Model in JAGS---------------
 
 # Data
-
 jags.data <- list(
   N = nrow(dat), nRock = max(dat$rock_idx),
   rock = dat$rock_idx,
@@ -97,38 +97,59 @@ jags.data <- list(
   slopeHighInd = as.numeric(dat$Slope == "High"), # this an above captures between trial shear effect
   SandInd      = as.numeric(dat$Sediment.Type == "Sand"),
   GravelInd    = as.numeric(dat$Sediment.Type == "Gravel"),
-  hydraulic    = dat$hydraulic, # only sees the leftover variation among rocks within the same trial.
+  #hydraulic    = dat$hydraulic, # only sees the leftover variation among rocks within the same trial?
   FrontInd     = as.numeric(dat$Position == "Front")
 )
 
 
-params <- c("gamma0","gamma1","gamma2","gamma3","gamma4","gamma5","gamma6",
+params <- c("gamma0","gamma1","gamma2","gamma3","gamma4","gamma5",#"gamma6",
             "sigma.rock","phi")
 
 inits <- function(){
   list(gamma0 = rnorm(1,0,1), gamma1 = rnorm(1,0,1), gamma2 = rnorm(1,0,1), gamma3 = rnorm(1,0,1), gamma4 = rnorm(1,0,1), 
-       gamma5 = rnorm(1,0,1), gamma6 = rnorm(1,0,1), sigma.rock = runif(1, 0.1, 1), phi = rgamma(1,1,1))
+       gamma5 = rnorm(1,0,1), #gamma6 = rnorm(1,0,1),
+       sigma.rock = runif(1, 0.1, 1), phi = rgamma(1,1,1))
 }
 
 out <- jags(data = jags.data, inits = inits, parameters.to.save = params,
-            model.file = "jags model real data.R",
+            model.file = "jags model front back.R",
             n.chains = 3, n.iter = 6000, n.burnin = 1000, n.thin = 5, parallel = TRUE)
 print(out)       # check Rhat < 1.1 and decent n.eff
 plot(out)
 
 MCMCplot(out,
-         params = c("gamma0", "gamma1","gamma2","gamma3","gamma4","gamma5","gamma6"),
-         ISB = TRUE, exact = TRUE, main = "",
+         params = c("gamma0", "gamma1","gamma2","gamma3","gamma4","gamma5"),#,"gamma6"),
+         ISB = TRUE, exact = TRUE, main = "",  ci = c(85, 95),
          xlab = "Parameter Estimate (logit scale)",
-         col = c("black","#009E73","#009E73","#56B4E9","#56B4E9","#CC79A7","#E69F00"),
+         col = c("black","#009E73","#009E73","#56B4E9","#56B4E9","#CC79A7"),#,"#E69F00"),
          labels = c("Intercept (low slope & no subst)","Medium slope (vs Low)", "High slope (vs Low)",
                     "Sand (vs None)", "Gravel (vs None)",
-                    "Hydraulic (log shear stress)", "Front (vs Back)"),
+                    #"Hydraulic (log shear stress)", 
+                    "Front (vs Back)"),
          guide_lines = TRUE)
 
-# A near zero hydraulic parameter tells us that within a trial, rocks with relatively higher shear stress didn't clearly lose more mat
+# T-TESTS------------------------------
+# Extract Front and Back into separate vectors
+front_data <- Front.Back$Shear.Stress[Front.Back$Position == "Front"]
+back_data  <- Front.Back$Shear.Stress[Front.Back$Position == "Back"]
+# Run the paired t-test
+t.test(front_data, back_data, paired = TRUE)
+# shear stress is significantly different between front and back for paired 
 
-# A bunch of plots
+# ODDS RATIO-----------------------------
+exp(out$mean$gamma1) # percent change in AFDM is 1.8x more likely to occur in medium slopes than low slopes
+exp(out$mean$gamma2) # percent change in AFDM is 1.7x more likely to occur in high slopes than low slopes
+exp(out$mean$gamma3) # percent change in AFDM is 0.63x more likely to occur in sand treatments than no sediment treatments
+exp(out$mean$gamma4) # percent change in AFDM is 1.1x more likely to occur in gravel treatments than no sediment treatments
+exp(out$mean$gamma5) # percent change in AFDM is 2.25x more likely to occur on front of rock than back of rock
+
+exp(out$mean$gamma1) # percent change in mat thickness is 1.5x more likely to occur in medium slopes than low slopes
+exp(out$mean$gamma2) # percent change in mat thickness is 3.2x more likely to occur in high slopes than low slopes -- > 0 
+exp(out$mean$gamma3) # percent change in mat thickness is 0.5x more likely to occur in sand treatments than no sediment treatments
+exp(out$mean$gamma4) # percent change in mat thickness is 1.3x more likely to occur in gravel treatments than no sediment treatments
+exp(out$mean$gamma5) # percent change in mat thickness is 2x more likely to occur on front of rock than back of rock -- > 0 
+
+# MORE PLOTS---------------------------
 dat$removal <- dat$y_raw * 100
 
 ggplot(dat, aes(hydraulic, removal)) +
@@ -184,9 +205,74 @@ ggplot(dat, aes(x = hydraulic, y = removal)) +
 
 
 
-# Run t-test or paired t-test of hydraulic values of front and back of each rock
-  # check for collinearity 
 
-# could do a derived quantity between sand and gravel and med and high
 
-# separate model for diatoms, single value per rock, average front and back velocity
+# DIATOM MODEL-----------------------------------------------------------------
+# Choose the response: Percent.Change.in.AFDM or Percent.Change.Mat.Thickness
+resp <- "Percent.Change.in.Diatoms"
+
+# Cleaning this dataset for the purposes of this model
+Floom <- Floom %>%
+  mutate(Avg.Shear.Stress = (Back.Shear.Stress + Front.Shear.Stress)/2) %>%
+  mutate(Avg.Shear.Velocity = (Back.Shear.Velocity + Front.Shear.Velocity)/2) %>%
+  select(-Percent.Change.in.Cyano, -Percent.Change.in.Green, -Percent.Change.in.High.Mat.AFDM,
+       -Percent.Change.in.Low.Mat.AFDM, -Percent.Change.High.Mat.Thickness, -Percent.Change.Low.Mat.Thickness,
+       -Quality.B, -Quality.F, -Back.Shear.Stress, -Front.Shear.Stress, -Back.Shear.Velocity, -Front.Shear.Velocity) 
+
+dat <- Floom %>%
+  mutate(
+    y_raw = pmin(pmax(-.data[[resp]], 0), 100) / 100, # Proportion REDUCTION; increases (positive % change) capped at 0
+    y = (y_raw * (n() - 1) + 0.5) / n() # Squeeze off 0 and 1 for the beta likelihood
+  ) %>%
+  group_by(Trial) %>%
+  mutate(hydraulic = as.numeric(scale(log(Avg.Shear.Stress)))) %>%   # standardized within trial
+  ungroup() %>%
+  filter(!is.na(y), !is.na(hydraulic)) %>% # Removes NAs of shear stress
+  mutate(rock_idx = as.integer(factor(Rock.ID)))
+
+table(dat$Trial)                 # should be roughly 4-5 rows (i.e., rocks) per trial 
+sum(Floom$Percent.Change.in.AFDM > 0, na.rm = TRUE)   # how many increases got capped at 0
+
+
+
+# Run Beta Regression Model in JAGS---------------
+
+# Data
+jags.data <- list(
+  N = nrow(dat),
+  y = dat$y,
+  slopeMedInd  = as.numeric(dat$Slope == "Medium"),
+  slopeHighInd = as.numeric(dat$Slope == "High"), # this an above captures between trial shear effect
+  SandInd      = as.numeric(dat$Sediment.Type == "Sand"),
+  GravelInd    = as.numeric(dat$Sediment.Type == "Gravel")
+)
+
+
+params <- c("gamma0","gamma1","gamma2","gamma3","gamma4","phi")
+
+inits <- function(){
+  list(gamma0 = rnorm(1,0,1), gamma1 = rnorm(1,0,1), gamma2 = rnorm(1,0,1), gamma3 = rnorm(1,0,1), gamma4 = rnorm(1,0,1), 
+ phi = phi = rgamma(1,1,1))
+}
+
+out <- jags(data = jags.data, inits = inits, parameters.to.save = params,
+            model.file = "jags model diatoms.R",
+            n.chains = 3, n.iter = 6000, n.burnin = 1000, n.thin = 5, parallel = TRUE)
+print(out)       # check Rhat < 1.1 and decent n.eff
+plot(out)
+
+MCMCplot(out,
+         params = c("gamma0", "gamma1","gamma2","gamma3","gamma4"),
+         ISB = TRUE, exact = TRUE, main = "",  ci = c(85, 95),
+         xlab = "Parameter Estimate (logit scale)",
+         col = c("black","#009E73","#009E73","#56B4E9","#56B4E9"),
+         labels = c("Intercept (low slope & no subst)","Medium slope (vs Low)", "High slope (vs Low)",
+                    "Sand (vs None)", "Gravel (vs None)"),
+         guide_lines = TRUE)
+
+# ODDS RATIO-----------------------------
+exp(out$mean$gamma1) # percent change in diatoms is 0.88x more likely to occur in medium slopes than low slopes
+exp(out$mean$gamma2) # percent change in diatoms is 1.33x more likely to occur in high slopes than low slopes
+exp(out$mean$gamma3) # percent change in diatoms is 0.93x more likely to occur in sand treatments than no sediment treatments
+exp(out$mean$gamma4) # percent change in diatoms is 1.3x more likely to occur in gravel treatments than no sediment treatments
+
