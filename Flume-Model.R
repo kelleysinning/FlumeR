@@ -54,7 +54,11 @@ Front.Back <- Front.Back %>%
     Shear.Stress = Shear.Stress..Pa.,
     Shear.Velocity = Shear.Velocity..m.s.)
 
-
+Front.Back <- Front.Back %>% # adding a column with z-scored shear stress 
+  group_by(Trial, Position) %>%
+  mutate(z_Shear = as.numeric(scale(Shear.Stress))) %>%
+  ungroup()
+         
 Front.Back$Trial <- factor(Front.Back$Trial)
 Front.Back$Slope <- factor(Front.Back$Slope, levels = c("Low", "Medium", "High"))
 Front.Back$Sediment.Type <- factor(Front.Back$Sediment.Type,
@@ -67,17 +71,14 @@ names(Front.Back)
 
 # FRONT BACK MODEL---------------------------------------------------------
 # Choose the response: Percent.Change.in.AFDM or Percent.Change.Mat.Thickness
-resp <- "Percent.Change.Mat.Thickness"
+resp <- "Percent.Change.in.AFDM"
 
 dat <- Front.Back %>%
   mutate(
     y_raw = pmin(pmax(-.data[[resp]], 0), 100) / 100, # Proportion REDUCTION; increases (positive % change) capped at 0
     y = (y_raw * (n() - 1) + 0.5) / n() # Squeeze off 0 and 1 for the beta likelihood
   ) %>%
-  group_by(Trial) %>%
-  mutate(hydraulic = as.numeric(scale(log(Shear.Stress)))) %>%   # standardized within trial
-  ungroup() %>%
-  filter(!is.na(y), !is.na(hydraulic)) %>% # Removes NAs of shear stress
+  filter(!is.na(y), !is.na(z_Shear)) %>% # Removes NAs of shear stress
   mutate(rock_idx = as.integer(factor(Rock)))
 
 table(dat$Position)   # check front/back rows survived
@@ -85,7 +86,7 @@ table(dat$Trial)                 # should be roughly 9-10 rows per trial
 sum(Front.Back$Percent.Change.in.AFDM > 0, na.rm = TRUE)   # how many increases got capped at 0
 
 
-
+str(dat)
 # Run Beta Regression Model in JAGS---------------
 
 # Data
@@ -97,17 +98,24 @@ jags.data <- list(
   slopeHighInd = as.numeric(dat$Slope == "High"), # this an above captures between trial shear effect
   SandInd      = as.numeric(dat$Sediment.Type == "Sand"),
   GravelInd    = as.numeric(dat$Sediment.Type == "Gravel"),
-  #hydraulic    = dat$hydraulic, # only sees the leftover variation among rocks within the same trial?
-  FrontInd     = as.numeric(dat$Position == "Front")
+  Shear       = dat$z_Shear, # shear stress as continuous covariate,after accounting for the trial specific indicators, effect of shear stress conditional on slope, substrate,etc. can residual be explained by shear stress
+  # could include shear stress in model in leiu of front and back position
+  # is difference in shear stress explanatory of difference in front of rocks?--> I don't think so, it sits around zero so I think z-standardized shear is telling us the slope is mostly capturing shear stress effect?
+  
+   FrontInd     = as.numeric(dat$Position == "Front")
 )
 
 
-params <- c("gamma0","gamma1","gamma2","gamma3","gamma4","gamma5",#"gamma6",
+# will still have to include raw data in a figure for shear stress as opposed to z scores
+# this could be a 3 way anova
+
+
+params <- c("gamma0","gamma1","gamma2","gamma3","gamma4","gamma5", "gamma6",
             "sigma.rock","phi")
 
 inits <- function(){
   list(gamma0 = rnorm(1,0,1), gamma1 = rnorm(1,0,1), gamma2 = rnorm(1,0,1), gamma3 = rnorm(1,0,1), gamma4 = rnorm(1,0,1), 
-       gamma5 = rnorm(1,0,1), #gamma6 = rnorm(1,0,1),
+       gamma5 = rnorm(1,0,1), gamma6 = rnorm(1,0,1),
        sigma.rock = runif(1, 0.1, 1), phi = rgamma(1,1,1))
 }
 
@@ -118,15 +126,68 @@ print(out)       # check Rhat < 1.1 and decent n.eff
 plot(out)
 
 MCMCplot(out,
-         params = c("gamma0", "gamma1","gamma2","gamma3","gamma4","gamma5"),#,"gamma6"),
+         params = c("gamma0", "gamma1","gamma2","gamma3","gamma4","gamma5", "gamma6"),
          ISB = TRUE, exact = TRUE, main = "",  ci = c(85, 95),
          xlab = "Parameter Estimate (logit scale)",
-         col = c("black","#009E73","#009E73","#56B4E9","#56B4E9","#CC79A7"),#,"#E69F00"),
+         col = c("black","#009E73","#009E73","#56B4E9","#56B4E9","#CC79A7", "#E69F00"),
          labels = c("Intercept (low slope & no subst)","Medium slope (vs Low)", "High slope (vs Low)",
-                    "Sand (vs None)", "Gravel (vs None)",
-                    #"Hydraulic (log shear stress)", 
-                    "Front (vs Back)"),
+                    "Sand (vs None)", "Gravel (vs None)", "Z-shear stress",
+         "Front (vs Back)"),
          guide_lines = TRUE)
+
+
+
+# come back to this and clean it up
+
+library(dplyr)
+library(ggplot2)
+
+sims <- out$sims.list   # posterior draws for each parameter
+
+# Shear values to predict across (z-scored, same scale as the model)
+shear_seq <- seq(min(dat$z_Shear), max(dat$z_Shear), length.out = 100)
+
+# Helper: predicted % removal across shear for one intercept
+# (rock random effect u set to 0, i.e., an "average" rock)
+pred_line <- function(intercept_draws, label) {
+  mat <- sapply(shear_seq, function(x) plogis(intercept_draws + sims$gamma5 * x))  # draws x 100
+  tibble(
+    shear = shear_seq,
+    mean  = 100 * colMeans(mat),
+    lo    = 100 * apply(mat, 2, quantile, 0.025),
+    hi    = 100 * apply(mat, 2, quantile, 0.975),
+    group = label
+  )
+}
+
+lab <- c("Intercept (Low slope, no substrate)",
+         "Medium slope", "High slope", "Sand", "Gravel")
+
+plot_df <- bind_rows(
+  pred_line(sims$gamma0,                lab[1]),
+  pred_line(sims$gamma0 + sims$gamma1,  lab[2]),
+  pred_line(sims$gamma0 + sims$gamma2,  lab[3]),
+  pred_line(sims$gamma0 + sims$gamma3,  lab[4]),
+  pred_line(sims$gamma0 + sims$gamma4,  lab[5])
+) %>%
+  mutate(group = factor(group, levels = lab))
+
+cols <- c("black", "#009E73", "#E69F00", "#56B4E9", "#CC79A7")
+names(cols) <- lab
+
+ggplot(plot_df, aes(shear, mean, color = group, fill = group)) +
+  geom_ribbon(aes(ymin = lo, ymax = hi), alpha = 0.12, color = NA) +
+  geom_line(linewidth = 1.2) +
+  # optional: raw data behind the lines
+  geom_point(data = dat, aes(z_Shear, y * 100),
+             inherit.aes = FALSE, color = "grey50", alpha = 0.4, size = 1.5) +
+  scale_color_manual(values = cols, name = NULL) +
+  scale_fill_manual(values = cols, name = NULL) +
+  labs(x = "Shear stress (z-score)",
+       y = "AFDM removal (%)") +
+  theme_classic(base_size = 14) +
+  theme(legend.position = "right")
+
 
 # T-TESTS------------------------------
 # Extract Front and Back into separate vectors
@@ -135,6 +196,37 @@ back_data  <- Front.Back$Shear.Stress[Front.Back$Position == "Back"]
 # Run the paired t-test
 t.test(front_data, back_data, paired = TRUE)
 # shear stress is significantly different between front and back for paired 
+mean(front_data, na.rm = TRUE)
+mean(back_data, na.rm = TRUE)
+
+
+# Extract Front and Back into separate vectors
+front_data <- Front.Back$Shear.Velocity[Front.Back$Position == "Front"]
+back_data  <- Front.Back$Shear.Velocity[Front.Back$Position == "Back"]
+# Run the paired t-test
+t.test(front_data, back_data, paired = TRUE)
+# shear stress is significantly different between front and back for paired 
+mean(front_data, na.rm = TRUE)
+mean(back_data, na.rm = TRUE)
+
+plot(x = Front.Back$Shear.Stress, y = Front.Back$Shear.Velocity)
+
+ggplot(Front.Back, aes( x= Position, y = Shear.Stress))
+
+
+# Check this out and fix
+library(ggplot2)
+
+ggplot(Front.Back, aes(x = Position, y = Shear.Stress)) +
+  geom_boxplot(aes(fill = Position), width = 0.5, alpha = 0.4,
+               outlier.shape = NA) +
+  geom_line(aes(group = Rock), color = "grey50", alpha = 0.5) +
+  geom_point(aes(color = Position), size = 2.5, alpha = 0.8) +
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 4,
+               fill = "white", color = "black") +
+  labs(x = NULL, y = "Shear stress") +
+  theme_classic(base_size = 14) +
+  theme(legend.position = "none")
 
 # ODDS RATIO-----------------------------
 exp(out$mean$gamma1) # percent change in AFDM is 1.8x more likely to occur in medium slopes than low slopes
@@ -234,6 +326,8 @@ table(dat$Trial)                 # should be roughly 4-5 rows (i.e., rocks) per 
 sum(Floom$Percent.Change.in.AFDM > 0, na.rm = TRUE)   # how many increases got capped at 0
 
 
+# sand should shrink
+
 
 # Run Beta Regression Model in JAGS---------------
 
@@ -243,7 +337,7 @@ jags.data <- list(
   y = dat$y,
   slopeMedInd  = as.numeric(dat$Slope == "Medium"),
   slopeHighInd = as.numeric(dat$Slope == "High"), # this an above captures between trial shear effect
-  SandInd      = as.numeric(dat$Sediment.Type == "Sand"),
+  SandInd      = as.numeric(dat$Sediment.Type == "Sand "),
   GravelInd    = as.numeric(dat$Sediment.Type == "Gravel")
 )
 
@@ -252,7 +346,7 @@ params <- c("gamma0","gamma1","gamma2","gamma3","gamma4","phi")
 
 inits <- function(){
   list(gamma0 = rnorm(1,0,1), gamma1 = rnorm(1,0,1), gamma2 = rnorm(1,0,1), gamma3 = rnorm(1,0,1), gamma4 = rnorm(1,0,1), 
- phi = phi = rgamma(1,1,1))
+ phi = rgamma(1,1,1))
 }
 
 out <- jags(data = jags.data, inits = inits, parameters.to.save = params,
