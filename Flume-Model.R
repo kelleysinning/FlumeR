@@ -60,10 +60,6 @@ Front.Back <- Front.Back %>% # adding a column with z-scored shear stress
   mutate(z_Shear = as.numeric(scale(Shear.Stress))) %>%
   ungroup()
 
-
-# will still have to include raw data in a figure for shear stress as opposed to z scores
-# this could be a 3 way anova
-
          
 Front.Back$Trial <- factor(Front.Back$Trial)
 Front.Back$Slope <- factor(Front.Back$Slope, levels = c("Low", "Medium", "High"))
@@ -94,6 +90,11 @@ Quality$Trial <- factor(Quality$Trial)
 Quality$Slope <- factor(Quality$Slope, levels = c("Low", "Medium", "High"))
 Quality$Sediment.Type <- factor(Quality$Sediment.Type,
                               levels = c("None", "Sand ", "Gravel"))
+
+# will still have to include raw data in a figure for shear stress as opposed to z scores
+# this could be a 3 way anova
+
+
 # FRONT BACK MODEL---------------------------------------------------------
 # RESPONSE IS PERCENT CHANGE IN AFDM
 resp <- "Percent.Change.in.AFDM"
@@ -116,8 +117,9 @@ str(dat)
 
 # Data
 jags.data <- list(
-  N = nrow(dat), nRock = max(dat$rock_idx),
-  rock = dat$rock_idx,
+  N = nrow(dat), 
+  nRock = max(dat$rock_idx),# disregard if we take out individual rock in mode
+  rock = dat$rock_idx,# disregard if we take out individual rock in mode
   y = dat$y,
   slopeMedInd  = as.numeric(dat$Slope == "Medium"),
   slopeHighInd = as.numeric(dat$Slope == "High"), # this an above captures between trial shear effect
@@ -126,7 +128,6 @@ jags.data <- list(
   Shear       =  dat$z_Shear, # shear stress as continuous covariate after accounting for the trial specific indicators, effect of shear stress conditional on slope, substrate,etc... can residual variation be explained by shear stress
   # could include shear stress in model in leiu of front and back position?
   # is difference in shear stress explanatory of difference in front of rocks?--> I don't think so, it sits around zero so I think z-standardized shear is telling us the slope is mostly capturing shear stress effect?
-  
    FrontInd     = as.numeric(dat$Position == "Front")
 )
 
@@ -249,19 +250,12 @@ jags.data <- list(
   rock = dat$rock_idx,
   y = dat$y,
   slopeMedInd  = as.numeric(dat$Slope == "Medium"),
-  slopeHighInd = as.numeric(dat$Slope == "High"), # this an above captures between trial shear effect
+  slopeHighInd = as.numeric(dat$Slope == "High"),
   SandInd      = as.numeric(dat$Sediment.Type == "Sand"),
   GravelInd    = as.numeric(dat$Sediment.Type == "Gravel"),
-  Shear       = dat$z_Shear, # shear stress as continuous covariate,after accounting for the trial specific indicators, effect of shear stress conditional on slope, substrate,etc. can residual be explained by shear stress
-  # could include shear stress in model in leiu of front and back position
-  # is difference in shear stress explanatory of difference in front of rocks?--> I don't think so, it sits around zero so I think z-standardized shear is telling us the slope is mostly capturing shear stress effect?
-  
+  Shear       = dat$z_Shear,
   FrontInd     = as.numeric(dat$Position == "Front")
 )
-
-
-# will still have to include raw data in a figure for shear stress as opposed to z scores
-# this could be a 3 way anova
 
 
 params <- c("gamma0","gamma1","gamma2","gamma3","gamma4","gamma5", "gamma6",
@@ -276,7 +270,7 @@ inits <- function(){
 out <- jags(data = jags.data, inits = inits, parameters.to.save = params,
             model.file = "jags model front back.R",
             n.chains = 3, n.iter = 6000, n.burnin = 1000, n.thin = 5, parallel = TRUE)
-print(out)       # check Rhat < 1.1 and decent n.eff
+print(out)      
 plot(out)
 
 MCMCplot(out,
@@ -416,64 +410,6 @@ ggplot(Front.Back, aes(x = Position, y = Shear.Velocity)) +
   theme(legend.position = "none")
 
 
-# MORE PLOTS---------------------------
-dat$removal <- dat$y_raw * 100
-
-ggplot(dat, aes(hydraulic, removal)) +
-  geom_point(size = 2.5, alpha = 0.8) +
-  geom_smooth(method = "lm", se = TRUE) +
-  scale_x_log10() +
-  labs(x = "Shear stress (Pa, log scale)", y = "AFDM removal") +
-  theme_bw()
-
-ggplot(dat, aes(hydraulic, removal, color = Position)) +
-  geom_point(size = 2.5, alpha = 0.8) +
-  geom_smooth(method = "lm", se = TRUE) +
-  scale_x_log10() +
-  labs(x = "Shear stress (Pa, log scale)", y = "AFDM removal") +
-  theme_bw()
-
-ggplot(dat, aes(hydraulic, removal, color = Slope)) +
-  geom_point(size = 2.5, alpha = 0.8) +
-  geom_smooth(method = "lm", se = TRUE) +
-  scale_x_log10() +
-  labs(x = "Shear stress (Pa, log scale)", y = "AFDM removal") +
-  theme_bw()
-
-ggplot(dat, aes(hydraulic, removal, color = Sediment.Type)) +
-  geom_point(size = 2.5, alpha = 0.8) +
-  geom_smooth(method = "lm", se = TRUE) +
-  scale_x_log10() +
-  labs(x = "Shear stress (Pa, log scale)", y = "AFDM removal") +
-  theme_bw()
-
-ggplot(dat, aes(hydraulic, removal, color = Position)) +
-  geom_point(size = 2) +
-  geom_smooth(method = "lm", se = FALSE) +
-  scale_x_log10() +
-  facet_wrap(Slope ~ Sediment.Type) +
-  labs(x = "Shear stress (Pa, log scale)", y = "AFDM removal") +
-  theme_bw()
-
-ggplot(dat, aes(hydraulic, removal, group = Rock)) +
-  geom_line(color = "grey60") +
-  geom_point(aes(color = Position), size = 2.5) +
-  scale_x_log10() +
-  facet_wrap(Slope ~ Sediment.Type) +
-  labs(x = "Shear stress (Pa, log scale)", y = "AFDM removal") +
-  theme_bw() # Much more similar removal at gravel and high slope
-
-ggplot(dat, aes(x = hydraulic, y = removal)) + 
-  geom_point() +
-  facet_grid(Slope ~ Sediment.Type) +
-  xlab("Hydraulic Metric") +
-  ylab("Percent Reduction in Didymo") +
-  theme_bw()
-
-
-
-
-
 # DIATOM MODEL-----------------------------------------------------------------
 resp <- "Percent.Change.in.Diatoms"
 
@@ -505,7 +441,7 @@ jags.data <- list(
   N = nrow(dat),
   y = dat$y,
   slopeMedInd  = as.numeric(dat$Slope == "Medium"),
-  slopeHighInd = as.numeric(dat$Slope == "High"), # this an above captures between trial shear effect
+  slopeHighInd = as.numeric(dat$Slope == "High"), 
   SandInd      = as.numeric(dat$Sediment.Type == "Sand "),
   GravelInd    = as.numeric(dat$Sediment.Type == "Gravel"),
   Shear       =  dat$z_Shear
@@ -522,7 +458,7 @@ inits <- function(){
 out <- jags(data = jags.data, inits = inits, parameters.to.save = params,
             model.file = "jags model diatoms.R",
             n.chains = 3, n.iter = 6000, n.burnin = 1000, n.thin = 5, parallel = TRUE)
-print(out)       # check Rhat < 1.1 and decent n.eff
+print(out)       
 plot(out)
 
 MCMCplot(out,
@@ -586,7 +522,6 @@ ggplot(plot_df, aes(shear, mean, color = group, fill = group)) +
 
 
 
-
 # ODDS RATIO-----------------------------
 exp(out$mean$gamma1) # percent change in diatoms is 0.88x more likely to occur in medium slopes than low slopes
 exp(out$mean$gamma2) # percent change in diatoms is 1.33x more likely to occur in high slopes than low slopes
@@ -594,5 +529,4 @@ exp(out$mean$gamma3) # percent change in diatoms is 0.93x more likely to occur i
 exp(out$mean$gamma4) # percent change in diatoms is 1.3x more likely to occur in gravel treatments than no sediment treatments
 
 
-# next...keep trying to understand what is happening
-# look at derived quantities between treatments (e.g., mid vs high)
+
