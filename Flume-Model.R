@@ -91,9 +91,6 @@ Quality$Slope <- factor(Quality$Slope, levels = c("Low", "Medium", "High"))
 Quality$Sediment.Type <- factor(Quality$Sediment.Type,
                               levels = c("None", "Sand ", "Gravel"))
 
-# will still have to include raw data in a figure for shear stress as opposed to z scores
-# this could be a 3 way anova
-
 
 # FRONT BACK MODEL---------------------------------------------------------
 # RESPONSE IS PERCENT CHANGE IN AFDM
@@ -159,10 +156,6 @@ MCMCplot(out,
 
 
 # Pretty plot--------------------------
-
-# consider faceting into 2 figures with one focused on sediment and one on slope
-# make it also for mat thickness and the diatom model??
-
 
 sims <- out$sims.list   # posterior draws for each parameter
 
@@ -527,6 +520,13 @@ exp(out$mean$gamma1) # percent change in diatoms is 0.88x more likely to occur i
 exp(out$mean$gamma2) # percent change in diatoms is 1.33x more likely to occur in high slopes than low slopes
 exp(out$mean$gamma3) # percent change in diatoms is 0.93x more likely to occur in sand treatments than no sediment treatments
 exp(out$mean$gamma4) # percent change in diatoms is 1.3x more likely to occur in gravel treatments than no sediment treatments
+
+
+# TO-DO------------------------------------------------------------------------------------
+# make a  figure for shear stress with raw data as opposed to z-scores
+plot(Floom$Trial, Floom$Avg.Shear.Stress) # but prettier
+
+# consider faceting the pretty plots into 2 figures with one focused on sediment and one on slope
 
 
 
