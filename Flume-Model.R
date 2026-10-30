@@ -14,6 +14,7 @@ setwd("~/Library/CloudStorage/OneDrive-TheUniversityofMontana/Flume experiment/D
 
 Floom <- read.csv("CSV.R.csv")
 Front.Back <- read.csv("Front.Back.csv")
+Quality <- read.csv("Front.Back_GoodQuality.csv")
 
 # Cleaning dfs up
 Floom <- Floom %>%
@@ -59,6 +60,7 @@ Front.Back <- Front.Back %>% # adding a column with z-scored shear stress
   mutate(z_Shear = as.numeric(scale(Shear.Stress))) %>%
   ungroup()
 
+
 # will still have to include raw data in a figure for shear stress as opposed to z scores
 # this could be a 3 way anova
 
@@ -71,7 +73,27 @@ Front.Back$Position <- factor(Front.Back$Position, levels = c("Front", "Back"))
 
 
 
+Quality <- Quality %>%
+  mutate(
+    across(starts_with("X..Change"), ~ as.numeric(as.character(.)))
+  )%>%
+  rename(
+    Trial = Trial..,   # old name = a → new name = new_a
+    Percent.Change.Mat.Thickness = X..Change.Mat.Thickness,
+    Percent.Change.in.Diatoms = X..Change.in.Diatom,
+    Percent.Change.in.AFDM = X..Change.AFDM,
+    Shear.Stress = Shear.Stress..Pa.,
+    Shear.Velocity = Shear.Velocity..m.s.)
 
+Quality <- Quality %>% # adding a column with z-scored shear stress 
+  group_by(Trial, Position) %>%
+  mutate(z_Shear = as.numeric(scale(Shear.Stress))) %>%
+  ungroup()
+
+Quality$Trial <- factor(Quality$Trial)
+Quality$Slope <- factor(Quality$Slope, levels = c("Low", "Medium", "High"))
+Quality$Sediment.Type <- factor(Quality$Sediment.Type,
+                              levels = c("None", "Sand ", "Gravel"))
 # FRONT BACK MODEL---------------------------------------------------------
 # RESPONSE IS PERCENT CHANGE IN AFDM
 resp <- "Percent.Change.in.AFDM"
@@ -327,7 +349,8 @@ exp(out$mean$gamma5) # percent change in mat thickness is 2x more likely to occu
 
 
 # T-TESTS------------------------------
-# Extract Front and Back into separate vectors
+# OF ALL FRONT-BACK
+# Extract Front and Back into separate vectors for Shear Stress
 front_data <- Front.Back$Shear.Stress[Front.Back$Position == "Front"]
 back_data  <- Front.Back$Shear.Stress[Front.Back$Position == "Back"]
 # Run the paired t-test
@@ -337,7 +360,7 @@ mean(front_data, na.rm = TRUE)
 mean(back_data, na.rm = TRUE)
 
 
-# Extract Front and Back into separate vectors
+# Extract Front and Back into separate vectors for Shear Velocity
 front_data <- Front.Back$Shear.Velocity[Front.Back$Position == "Front"]
 back_data  <- Front.Back$Shear.Velocity[Front.Back$Position == "Back"]
 # Run the paired t-test
@@ -345,6 +368,27 @@ t.test(front_data, back_data, paired = TRUE)
 # shear stress is significantly different between front and back for paired 
 mean(front_data, na.rm = TRUE)
 mean(back_data, na.rm = TRUE)
+
+
+# OF ONLY HIGH QUALITY FRONT AND BACK
+# Extract Front and Back into separate vectors for Shear Velocity
+front_data <- Quality$Shear.Stress[Quality$Position == "Front"]
+back_data  <- Quality$Shear.Stress[Quality$Position == "Back"]
+# Run the t-test (not paired)
+t.test(front_data, back_data)
+# shear stress is significantly different between front and back for paired 
+mean(front_data, na.rm = TRUE)
+mean(back_data, na.rm = TRUE)
+
+# Extract Front and Back into separate vectors for Shear Velocity
+front_data <- Quality$Shear.Velocity[Quality$Position == "Front"]
+back_data  <- Quality$Shear.Velocity[Quality$Position == "Back"]
+# Run the t-test (not paired)
+t.test(front_data, back_data)
+# shear stress is significantly different between front and back for paired 
+mean(front_data, na.rm = TRUE)
+mean(back_data, na.rm = TRUE)
+
 
 plot(x = Front.Back$Shear.Stress, y = Front.Back$Shear.Velocity)
 
