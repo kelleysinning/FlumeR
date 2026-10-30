@@ -357,8 +357,35 @@ mean(front_data, na.rm = TRUE)
 mean(back_data, na.rm = TRUE)
 
 
+# Plotting to see the differences between shear stress and velocity for rock position
+ggplot(Front.Back, aes(x = Position, y = Shear.Stress)) +
+  geom_boxplot(aes(fill = Position), width = 0.5, alpha = 0.4,
+               outlier.shape = NA) +
+  #geom_line(aes(group = Rock), color = "grey50", alpha = 0.5) +
+  geom_point(aes(color = Position), size = 2.5, alpha = 0.8) +
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 4,
+               fill = "white", color = "black") +
+  labs(x = NULL, y = "Shear stress") +
+  theme_classic(base_size = 14) +
+  theme(legend.position = "none")
+
+
+
+ggplot(Front.Back, aes(x = Position, y = Shear.Velocity)) +
+  geom_boxplot(aes(fill = Position), width = 0.5, alpha = 0.4,
+               outlier.shape = NA) +
+  #geom_line(aes(group = Rock), color = "grey50", alpha = 0.5) +
+  geom_point(aes(color = Position), size = 2.5, alpha = 0.8) +
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 4,
+               fill = "white", color = "black") +
+  labs(x = NULL, y = "Shear velocity") +
+  theme_classic(base_size = 14) +
+  theme(legend.position = "none")
+
+
+
 # OF ONLY HIGH QUALITY FRONT AND BACK
-# Extract Front and Back into separate vectors for Shear Velocity
+# Extract Front and Back into separate vectors for Shear Stress
 front_data <- Quality$Shear.Stress[Quality$Position == "Front"]
 back_data  <- Quality$Shear.Stress[Quality$Position == "Back"]
 # Run the t-test (not paired)
@@ -378,29 +405,6 @@ mean(back_data, na.rm = TRUE)
 
 
 plot(x = Front.Back$Shear.Stress, y = Front.Back$Shear.Velocity)
-
-# Plotting to see the differences between shear stress and velocity for rock position
-ggplot(Front.Back, aes(x = Position, y = Shear.Stress)) +
-  geom_boxplot(aes(fill = Position), width = 0.5, alpha = 0.4,
-               outlier.shape = NA) +
-  #geom_line(aes(group = Rock), color = "grey50", alpha = 0.5) +
-  geom_point(aes(color = Position), size = 2.5, alpha = 0.8) +
-  stat_summary(fun = mean, geom = "point", shape = 23, size = 4,
-               fill = "white", color = "black") +
-  labs(x = NULL, y = "Shear stress") +
-  theme_classic(base_size = 14) +
-  theme(legend.position = "none")
-
-ggplot(Front.Back, aes(x = Position, y = Shear.Velocity)) +
-  geom_boxplot(aes(fill = Position), width = 0.5, alpha = 0.4,
-               outlier.shape = NA) +
-  #geom_line(aes(group = Rock), color = "grey50", alpha = 0.5) +
-  geom_point(aes(color = Position), size = 2.5, alpha = 0.8) +
-  stat_summary(fun = mean, geom = "point", shape = 23, size = 4,
-               fill = "white", color = "black") +
-  labs(x = NULL, y = "Shear velocity") +
-  theme_classic(base_size = 14) +
-  theme(legend.position = "none")
 
 
 # DIATOM MODEL-----------------------------------------------------------------
