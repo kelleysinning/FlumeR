@@ -55,12 +55,20 @@ Front.Back <- Front.Back %>%
     Shear.Stress = Shear.Stress..Pa.,
     Shear.Velocity = Shear.Velocity..m.s.)
 
+
 Front.Back <- Front.Back %>% # adding a column with z-scored shear stress 
-  group_by(Trial, Position) %>%
-  mutate(z_Shear = as.numeric(scale(Shear.Stress))) %>%
+  group_by(Rock) %>%
+  mutate(
+    Mean.Shear = mean(Shear.Stress)) %>%
+  ungroup()
+         
+
+Front.Back <- Front.Back %>% # adding a column with z-scored shear stress 
+  group_by(Trial) %>%
+  mutate(
+    z_Shear = as.numeric(scale(Mean.Shear))) %>%
   ungroup()
 
-         
 Front.Back$Trial <- factor(Front.Back$Trial)
 Front.Back$Slope <- factor(Front.Back$Slope, levels = c("Low", "Medium", "High"))
 Front.Back$Sediment.Type <- factor(Front.Back$Sediment.Type,
@@ -122,19 +130,20 @@ jags.data <- list(
   slopeHighInd = as.numeric(dat$Slope == "High"), # this an above captures between trial shear effect
   SandInd      = as.numeric(dat$Sediment.Type == "Sand"),
   GravelInd    = as.numeric(dat$Sediment.Type == "Gravel"),
-  Shear       =  dat$z_Shear, # shear stress as continuous covariate after accounting for the trial specific indicators, effect of shear stress conditional on slope, substrate,etc... can residual variation be explained by shear stress
+  Shear       =  dat$z_Shear,
+  Trial = as.numeric(dat$Trial),# shear stress as continuous covariate after accounting for the trial specific indicators, effect of shear stress conditional on slope, substrate,etc... can residual variation be explained by shear stress
   # could include shear stress in model in leiu of front and back position?
   # is difference in shear stress explanatory of difference in front of rocks?--> I don't think so, it sits around zero so I think z-standardized shear is telling us the slope is mostly capturing shear stress effect?
    FrontInd     = as.numeric(dat$Position == "Front")
 )
 
 
-params <- c("gamma0","gamma1","gamma2","gamma3","gamma4","gamma5", "gamma6",
-            "sigma.rock","phi") # can take sigma.rock out if we decide to remove individual rock parameter
+
+params <- c("gamma0","gamma1","gamma2","gamma3","gamma4","gamma5", "gamma6","phi") # can take sigma.rock out if we decide to remove individual rock parameter
 
 inits <- function(){
   list(gamma0 = rnorm(1,0,1), gamma1 = rnorm(1,0,1), gamma2 = rnorm(1,0,1), gamma3 = rnorm(1,0,1), gamma4 = rnorm(1,0,1), 
-       gamma5 = rnorm(1,0,1), gamma6 = rnorm(1,0,1),
+       gamma5 = rnorm(1,0,1), gamma6 = rnorm(9,0,1), # change to9 bc 9 groups
        sigma.rock = runif(1, 0.1, 1), phi = rgamma(1,1,1))
 }
 
@@ -148,10 +157,23 @@ MCMCplot(out,
          params = c("gamma0", "gamma1","gamma2","gamma3","gamma4","gamma5", "gamma6"),
          ISB = TRUE, exact = TRUE, main = "",  ci = c(85, 95),
          xlab = "Parameter Estimate (logit scale)",
-         col = c("black","#009E73","#009E73","#56B4E9","#56B4E9","#CC79A7", "#E69F00"),
+         col = c("black","#009E73","#009E73","#56B4E9","#56B4E9","#CC79A7"), #, "#E69F00"),
          labels = c("Intercept (low slope & no subst)","Medium slope (vs Low)", "High slope (vs Low)",
-                    "Sand (vs None)", "Gravel (vs None)", "Z-shear stress",
-         "Front (vs Back)"),
+                    "Sand (vs None)", "Gravel (vs None)", "Shear stress*Position"),
+         #"Front (vs Back)"),
+         guide_lines = TRUE)
+
+
+MCMCplot(out,
+         params = c("gamma0","gamma1","gamma2","gamma3","gamma4","gamma5","gamma6"),
+         ISB = TRUE, exact = TRUE, main = "", ci = c(85, 95),
+         xlab = "Parameter Estimate (logit scale)",
+         col = c("black", "#009E73", "#009E73", "#56B4E9", "#56B4E9", "#CC79A7",
+                 rep("#E69F00", 9)),
+         labels = c("Intercept (low slope & no subst)", "Medium slope (vs Low)",
+                    "High slope (vs Low)", "Sand (vs None)", "Gravel (vs None)",
+                    "z-Shear stress",
+                    paste0("Front (vs Back), trial ", 1:9)),
          guide_lines = TRUE)
 
 
@@ -160,7 +182,7 @@ MCMCplot(out,
 sims <- out$sims.list   # posterior draws for each parameter
 
 # Shear values to predict across (z-scored, same scale as the model)
-shear_seq <- seq(min(dat$z_Shear), max(dat$z_Shear), length.out = 100)
+shear_seq <- seq(min(dat$Mean.Shear), max(dat$Mean.Shear), length.out = 100)
 
 # Helper: predicted % removal across shear for one intercept
 # (rock random effect u set to 0, i.e., an "average" rock)

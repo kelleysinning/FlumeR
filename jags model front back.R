@@ -5,18 +5,21 @@ model {
     b[i] <- (1 - mu[i]) * phi
     logit(mu[i]) <- gamma0 + gamma1*slopeMedInd[i] + gamma2*slopeHighInd[i] +
       gamma3*SandInd[i] + gamma4*GravelInd[i] + gamma5*Shear[i] + 
-      gamma6*FrontInd[i] #+ 
-      #u[rock[i]] # might not need this because front and back is already describing individual variation among rocks
-  } # taking out u didn't change the posterior
-  
-  # Rock-level random intercept (front and back of the same rock share it)
-#  for (r in 1:nRock) { u[r] ~ dnorm(0, tau.rock) }
-#  sigma.rock ~ dunif(0, 3)
-  #tau.rock <- pow(sigma.rock, -2)
+      gamma6[Trial[i]]*FrontInd[i] #+ 
+  } 
   
   # Priors
-  gamma0 ~ dnorm(0, 0.1); gamma1 ~ dnorm(0, 0.1); gamma2 ~ dnorm(0, 0.1)
-  gamma3 ~ dnorm(0, 0.1); gamma4 ~ dnorm(0, 0.1); gamma5 ~ dnorm(0, 0.1)
-  gamma6 ~ dnorm(0, 0.1)
-  phi ~ dgamma(0.1, 0.1) # precision parameter
+  gamma0 ~ dnorm(0, 0.001); gamma1 ~ dnorm(0, 0.001); gamma2 ~ dnorm(0, 0.001)
+  gamma3 ~ dnorm(0, 0.001); gamma4 ~ dnorm(0, 0.001); gamma5 ~ dnorm(0, 0.001)
+  
+  for (j in 1:9) {  
+    gamma6[j] ~ dnorm(lambda, tau) 
+    
+  } 
+  lambda ~  dnorm(0, 0.001) 
+  
+  tau <- 1 / (sigma*sigma) 
+  sigma ~ dunif(0, 5) 
+  
+  phi ~ dlnorm(0, 1) # precision parameter
 }
