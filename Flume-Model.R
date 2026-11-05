@@ -99,9 +99,10 @@ Quality$Slope <- factor(Quality$Slope, levels = c("Low", "Medium", "High"))
 Quality$Sediment.Type <- factor(Quality$Sediment.Type,
                               levels = c("None", "Sand ", "Gravel"))
 
-
-# FRONT BACK MODEL---------------------------------------------------------
+#################################################################################
+# FRONT BACK MODEL
 # RESPONSE IS PERCENT CHANGE IN AFDM
+#################################################################################
 resp <- "Percent.Change.in.AFDM"
 
 dat <- Front.Back %>%
@@ -123,8 +124,6 @@ str(dat)
 # Data
 jags.data <- list(
   N = nrow(dat), 
-  nRock = max(dat$rock_idx),# disregard if we take out individual rock in mode
-  rock = dat$rock_idx,# disregard if we take out individual rock in mode
   y = dat$y,
   slopeMedInd  = as.numeric(dat$Slope == "Medium"),
   slopeHighInd = as.numeric(dat$Slope == "High"), # this an above captures between trial shear effect
@@ -153,7 +152,7 @@ out <- jags(data = jags.data, inits = inits, parameters.to.save = params,
 print(out)       # check Rhat < 1.1 and decent n.eff
 plot(out)
 
-MCMCplot(out,
+MCMCplot(out, # figure for non-interactions
          params = c("gamma0", "gamma1","gamma2","gamma3","gamma4","gamma5", "gamma6"),
          ISB = TRUE, exact = TRUE, main = "",  ci = c(85, 95),
          xlab = "Parameter Estimate (logit scale)",
@@ -176,6 +175,42 @@ MCMCplot(out,
                     paste0("Front (vs Back), trial ", 1:9)),
          guide_lines = TRUE)
 
+
+
+
+library(MCMCvis)
+library(ggplot2)
+
+s <- MCMCsummary(out, params = "gamma6", ISB = TRUE,
+                 probs = c(0.025, 0.075, 0.5, 0.925, 0.975))
+
+d <- data.frame(
+  trial = as.integer(gsub("gamma6\\[|\\]", "", rownames(s))),
+  lo95  = s[["2.5%"]],
+  lo85  = s[["7.5%"]],
+  med   = s[["50%"]],
+  hi85  = s[["92.5%"]],
+  hi95  = s[["97.5%"]]
+)
+
+# Color cycles 1,4,7 / 2,5,8 / 3,6,9; shape changes by block 1-3 / 4-6 / 7-9
+d$col_grp <- factor((d$trial - 1) %% 3 + 1,
+                    labels = c("High", "Med", "Low"))
+d$shp_grp <- factor(ceiling(d$trial / 3),
+                    labels = c("No Sediment", "Sand", "Gravel"))
+d$trial_f <- factor(d$trial, levels = 9:1,
+                    labels = paste0("Front (vs Back), trial ", 9:1))
+
+
+ggplot(d, aes(y = trial_f, x = med, colour = col_grp, shape = shp_grp)) +
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "grey50") +
+  geom_linerange(aes(xmin = lo95, xmax = hi95), linewidth = 0.5) +
+  geom_linerange(aes(xmin = lo85, xmax = hi85), linewidth = 1.6) +
+  geom_point(size = 4) +
+  scale_colour_manual(values = c("#D55E00", "#0072B2", "#009E73"), name = "Slope") +
+  scale_shape_manual(values = c(16, 15, 17), name = "Sediment Type") +
+  labs(x = "Parameter Estimate (logit scale)", y = NULL) +
+  theme_classic(base_size = 13)
 
 # Pretty plot--------------------------
 
@@ -239,8 +274,11 @@ exp(out$mean$gamma5) # percent change in AFDM is 2.25x more likely to occur on f
 
 
 
+#################################################################################
+# FRONT BACK MODEL
+# RESPONSE IS PERCENT CHANGE IN MAT THICKNESS
+#################################################################################
 
-# RESPONSE IS PERCENT CHANGE IN MAT THICKNESS-------------------------------------
 resp <- "Percent.Change.Mat.Thickness"
 
 dat <- Front.Back %>%
@@ -261,32 +299,32 @@ str(dat)
 
 # Data
 jags.data <- list(
-  N = nrow(dat), nRock = max(dat$rock_idx),
-  rock = dat$rock_idx,
+  N = nrow(dat), 
   y = dat$y,
   slopeMedInd  = as.numeric(dat$Slope == "Medium"),
-  slopeHighInd = as.numeric(dat$Slope == "High"),
+  slopeHighInd = as.numeric(dat$Slope == "High"), # this an above captures between trial shear effect
   SandInd      = as.numeric(dat$Sediment.Type == "Sand"),
   GravelInd    = as.numeric(dat$Sediment.Type == "Gravel"),
-  Shear       = dat$z_Shear,
+  Shear       =  dat$z_Shear,
+  Trial = as.numeric(dat$Trial),
   FrontInd     = as.numeric(dat$Position == "Front")
 )
 
 
-params <- c("gamma0","gamma1","gamma2","gamma3","gamma4","gamma5", "gamma6",
-            "sigma.rock","phi")
+params <- c("gamma0","gamma1","gamma2","gamma3","gamma4","gamma5", "gamma6","phi") # can take sigma.rock out if we decide to remove individual rock parameter
 
 inits <- function(){
   list(gamma0 = rnorm(1,0,1), gamma1 = rnorm(1,0,1), gamma2 = rnorm(1,0,1), gamma3 = rnorm(1,0,1), gamma4 = rnorm(1,0,1), 
-       gamma5 = rnorm(1,0,1), gamma6 = rnorm(1,0,1),
-       sigma.rock = runif(1, 0.1, 1), phi = rgamma(1,1,1))
+       gamma5 = rnorm(1,0,1), gamma6 = rnorm(9,0,1), # change to9 bc 9 groups
+       phi = rgamma(1,1,1))
 }
 
 out <- jags(data = jags.data, inits = inits, parameters.to.save = params,
             model.file = "jags model front back.R",
             n.chains = 3, n.iter = 6000, n.burnin = 1000, n.thin = 5, parallel = TRUE)
-print(out)      
+print(out)       # check Rhat < 1.1 and decent n.eff
 plot(out)
+
 
 MCMCplot(out,
          params = c("gamma0", "gamma1","gamma2","gamma3","gamma4","gamma5", "gamma6"),
@@ -298,6 +336,52 @@ MCMCplot(out,
                     "Front (vs Back)"),
          guide_lines = TRUE)
 
+# for interactions with trial
+MCMCplot(out,
+         params = c("gamma0","gamma1","gamma2","gamma3","gamma4","gamma5","gamma6"),
+         ISB = TRUE, exact = TRUE, main = "", ci = c(85, 95),
+         xlab = "Parameter Estimate (logit scale)",
+         col = c("black", "#009E73", "#009E73", "#56B4E9", "#56B4E9", "#CC79A7",
+                 rep("#E69F00", 9)),
+         labels = c("Intercept (low slope & no subst)", "Medium slope (vs Low)",
+                    "High slope (vs Low)", "Sand (vs None)", "Gravel (vs None)",
+                    "z-Shear stress",
+                    paste0("Front (vs Back), trial ", 1:9)),
+         guide_lines = TRUE)
+
+
+
+
+s <- MCMCsummary(out, params = "gamma6", ISB = TRUE,
+                 probs = c(0.025, 0.075, 0.5, 0.925, 0.975))
+
+d <- data.frame(
+  trial = as.integer(gsub("gamma6\\[|\\]", "", rownames(s))),
+  lo95  = s[["2.5%"]],
+  lo85  = s[["7.5%"]],
+  med   = s[["50%"]],
+  hi85  = s[["92.5%"]],
+  hi95  = s[["97.5%"]]
+)
+
+# Color cycles 1,4,7 / 2,5,8 / 3,6,9; shape changes by block 1-3 / 4-6 / 7-9
+d$col_grp <- factor((d$trial - 1) %% 3 + 1,
+                    labels = c("High", "Med", "Low"))
+d$shp_grp <- factor(ceiling(d$trial / 3),
+                    labels = c("No Sediment", "Sand", "Gravel"))
+d$trial_f <- factor(d$trial, levels = 9:1,
+                    labels = paste0("Front (vs Back), trial ", 9:1))
+
+
+ggplot(d, aes(y = trial_f, x = med, colour = col_grp, shape = shp_grp)) +
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "grey50") +
+  geom_linerange(aes(xmin = lo95, xmax = hi95), linewidth = 0.5) +
+  geom_linerange(aes(xmin = lo85, xmax = hi85), linewidth = 1.6) +
+  geom_point(size = 4) +
+  scale_colour_manual(values = c("#D55E00", "#0072B2", "#009E73"), name = "Slope") +
+  scale_shape_manual(values = c(16, 15, 17), name = "Sediment Type") +
+  labs(x = "Parameter Estimate (logit scale)", y = NULL) +
+  theme_classic(base_size = 13)
 
 # Pretty plot-----------------------
 sims <- out$sims.list   # posterior draws for each parameter
@@ -463,14 +547,15 @@ jags.data <- list(
   slopeHighInd = as.numeric(dat$Slope == "High"), 
   SandInd      = as.numeric(dat$Sediment.Type == "Sand "),
   GravelInd    = as.numeric(dat$Sediment.Type == "Gravel"),
-  Shear       =  dat$z_Shear
+  Shear       =  dat$z_Shear,
+  Trial = as.numeric(dat$Trial)
 )
 
 
-params <- c("gamma0","gamma1","gamma2","gamma3","gamma4", "gamma5", "phi")
+params <- c("gamma0","gamma1","gamma2","gamma3","gamma4", "gamma5","gamma6", "phi")
 
 inits <- function(){
-  list(gamma0 = rnorm(1,0,1), gamma1 = rnorm(1,0,1), gamma2 = rnorm(1,0,1), gamma3 = rnorm(1,0,1), gamma4 = rnorm(1,0,1), gamma5 = rnorm(1,0,1),
+  list(gamma0 = rnorm(1,0,1), gamma1 = rnorm(1,0,1), gamma2 = rnorm(1,0,1), gamma3 = rnorm(1,0,1), gamma4 = rnorm(1,0,1), gamma5 = rnorm(1,0,1), gamma6 = rnorm(9,0,1),
  phi = rgamma(1,1,1))
 }
 
@@ -481,17 +566,66 @@ print(out)
 plot(out)
 
 MCMCplot(out,
-         params = c("gamma0", "gamma1","gamma2","gamma3","gamma4", "gamma5"),
+         params = c("gamma0", "gamma1","gamma2","gamma3","gamma4", "gamma5", "gamma6"),
          ISB = TRUE, exact = TRUE, main = "",  ci = c(85, 95),
          xlab = "Parameter Estimate (logit scale)",
-         col = c("black","#009E73","#009E73","#56B4E9","#56B4E9", "#CC79A7"),
+         col = c("black","#009E73","#009E73","#56B4E9","#56B4E9", "#CC79A7", "orange"),
          labels = c("Intercept (low slope & no subst)","Medium slope (vs Low)", "High slope (vs Low)",
-                    "Sand (vs None)", "Gravel (vs None)", "Z-shear stress"),
+                    "Sand (vs None)", "Gravel (vs None)", "Z-shear stress", "Trial"),
+         guide_lines = TRUE)
+
+# for trial term
+MCMCplot(out,
+         params = c("gamma0","gamma1","gamma2","gamma3","gamma4","gamma5","gamma6"),
+         ISB = TRUE, exact = TRUE, main = "", ci = c(85, 95),
+         xlab = "Parameter Estimate (logit scale)",
+         col = c("black", "#009E73", "#009E73", "#56B4E9", "#56B4E9", "#CC79A7",
+                 rep("orange", 9)),
+         labels = c("Intercept (low slope & no subst)", "Medium slope (vs Low)",
+                    "High slope (vs Low)", "Sand (vs None)", "Gravel (vs None)",
+                    "Z-shear stress",
+                    paste0("Trial ", 1:9, " effect")),
          guide_lines = TRUE)
 
 
+# for interactions with trial
 
-# Pretty plot
+s <- MCMCsummary(out, params = "gamma6", ISB = TRUE,
+                 probs = c(0.025, 0.075, 0.5, 0.925, 0.975))
+
+d <- data.frame(
+  trial = as.integer(gsub("gamma6\\[|\\]", "", rownames(s))),
+  lo95  = s[["2.5%"]],
+  lo85  = s[["7.5%"]],
+  med   = s[["50%"]],
+  hi85  = s[["92.5%"]],
+  hi95  = s[["97.5%"]]
+)
+
+# Color cycles 1,4,7 / 2,5,8 / 3,6,9; shape changes by block 1-3 / 4-6 / 7-9
+d$col_grp <- factor((d$trial - 1) %% 3 + 1,
+                    labels = c("High", "Med", "Low"))
+d$shp_grp <- factor(ceiling(d$trial / 3),
+                    labels = c("No Sediment", "Sand", "Gravel"))
+d$trial_f <- factor(d$trial, levels = 9:1,
+                    labels = paste0("Trial ", 9:1))
+
+
+ggplot(d, aes(y = trial_f, x = med, colour = col_grp, shape = shp_grp)) +
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "grey50") +
+  geom_linerange(aes(xmin = lo95, xmax = hi95), linewidth = 0.5) +
+  geom_linerange(aes(xmin = lo85, xmax = hi85), linewidth = 1.6) +
+  geom_point(size = 4) +
+  scale_colour_manual(values = c("#D55E00", "#0072B2", "#009E73"), name = "Slope") +
+  scale_shape_manual(values = c(16, 15, 17), name = "Sediment Type") +
+  labs(x = "Parameter Estimate (logit scale)", y = NULL) +
+  theme_classic(base_size = 13)
+
+# Basically, no significant effects of interaction, or any treatment, on cell removal
+plot(Floom$Trial, Floom$Percent.Change.in.Diatoms) # matches raw data 
+
+
+# Pretty plot----------------
 sims <- out$sims.list   # posterior draws for each parameter
 
 # Shear values to predict across (z-scored, same scale as the model)
@@ -553,6 +687,5 @@ exp(out$mean$gamma4) # percent change in diatoms is 1.3x more likely to occur in
 plot(Floom$Trial, Floom$Avg.Shear.Stress) # but prettier
 
 # consider faceting the pretty plots into 2 figures with one focused on sediment and one on slope
-
 
 
