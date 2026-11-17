@@ -41,23 +41,19 @@ Front.Back <- Front.Back %>%
     Shear.Velocity = Shear.Velocity..m.s.)
 
 AFDM <- "Percent.Change.in.AFDM"
-
 Front.Back <- Front.Back %>%
   mutate(
     AFDM_proportion_raw = pmin(pmax(-.data[[AFDM]], 0), 100) / 100, # Proportion REDUCTION; increases (positive % change) capped at 0
-    AFDM_proportion_squeezed = (AFDM_proportion_raw * (n() - 1) + 0.5) / n(), # Squeeze off 0 and 1 for the beta likelihood
-    adjusted_Percent.Change.in.AFDM = AFDM_proportion_raw*100)
+    adjusted_Percent.Change.in.AFDM = AFDM_proportion_raw*100) # new % that doesn't exceed bounda of 0 and 1
     
 
 Diatom <- "Percent.Change.in.Diatoms"
-
-Front.Back <- Front.Back %>%
+Front.Back <- Front.Back %>% 
   mutate(
     Diatom_proportion_raw = pmin(pmax(-.data[[Diatom]], 0), 100) / 100, # Proportion REDUCTION; increases (positive % change) capped at 0
-    Diatom_proportion_squeezed = (Diatom_proportion_raw * (n() - 1) + 0.5) / n(), # Squeeze off 0 and 1 for the beta likelihood
-    adjusted_Percent.Change.in.Diatoms = Diatom_proportion_raw*100)
+    adjusted_Percent.Change.in.Diatoms = Diatom_proportion_raw*100) # new % that doesn't exceed bounda of 0 and 1
 
-Front.Back <- Front.Back %>%
+Front.Back <- Front.Back %>% # assigning slope as a continuous var
   mutate(Slope.num = case_when(
     Slope == "Low"  ~ 3.1,
     Slope == "Medium" ~ 6.7,
@@ -79,14 +75,14 @@ Front.Back.Trial.Summary <- Front.Back %>%
   group_by(Trial, Slope, Sediment.Type) %>%
   summarise(
     Mean.Trial.Shear                   = mean(Shear.Stress, na.rm = TRUE),
-    Mean.Trial.AFDM.Proportion.Removal = mean(proportion_raw, na.rm = TRUE),
+    Mean.Trial.AFDM.Proportion.Removal = mean(AFDM_proportion_raw, na.rm = TRUE),
     Mean.Trial.AFDM.Percent.Removal    = mean(adjusted_Percent.Change.in.AFDM, na.rm = TRUE),
     Mean.Trial.Diatom.Percent.Removal          = mean(adjusted_Percent.Change.in.Diatoms, na.rm = TRUE),
     .groups = "drop"
   )
 
 
-Front.Back.Trial.Summary <- Front.Back.Trial.Summary %>%
+Front.Back.Trial.Summary <- Front.Back.Trial.Summary %>% # assigning slope as a continuous var
   mutate(Slope.num = case_when(
     Slope == "Low"  ~ 3.1,
     Slope == "Medium" ~ 6.7,
@@ -110,11 +106,6 @@ Quality <- Quality %>%
     Percent.Change.in.AFDM = X..Change.AFDM,
     Shear.Stress = Shear.Stress..Pa.,
     Shear.Velocity = Shear.Velocity..m.s.)
-
-Quality <- Quality %>% # adding a column with z-scored shear stress 
-  group_by(Trial, Position) %>%
-  mutate(z_Shear = as.numeric(scale(Shear.Stress))) %>%
-  ungroup()
 
 
 Quality$Trial <- factor(Quality$Trial)
