@@ -12,14 +12,5 @@ model {
   gamma0 ~ dnorm(0, 0.001); gamma1 ~ dnorm(0, 0.001); gamma2 ~ dnorm(0, 0.001)
   gamma3 ~ dnorm(0, 0.001); gamma4 ~ dnorm(0, 0.001); gamma5 ~ dnorm(0, 0.001); 
   
-  #for (j in 1:9) {  
-  #  gamma6[j] ~ dnorm(lambda, tau) 
-  #  
-  #} 
-  #lambda ~  dnorm(0, 0.001) 
-  
-  #tau <- 1 / (sigma*sigma) 
-  #sigma ~ dunif(0, 5) 
-  
   phi ~ dlnorm(0, 1) # precision parameter
 }

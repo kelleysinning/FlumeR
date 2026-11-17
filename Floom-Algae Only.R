@@ -26,6 +26,7 @@ setwd("~/Library/CloudStorage/OneDrive-TheUniversityofMontana/Flume experiment/D
 # Flume data!
 Floom <- read.csv("CSV.R.csv")
 
+
 Floom <- Floom %>%
   mutate(
     across(starts_with("X..Change"), ~ as.numeric(as.character(.)))
@@ -38,7 +39,11 @@ Floom <- Floom %>%
     Percent.Change.in.Green = X..Change.in.Green,
     Percent.Change.in.Cyano = X..Change.in.Cyano,
     Percent.Change.in.High.Mat.AFDM = X..Change..in.High.Impact.AFDM,
-    Percent.Change.in.Low.Mat.AFDM = X..Change..in.Low.Impact.AFDM)
+    Percent.Change.in.Low.Mat.AFDM = X..Change..in.Low.Impact.AFDM,
+    Front.Shear.Stress = Shear.Stress.Front..Pa.,
+    Back.Shear.Stress = Shear.Stress.Back..Pa.,
+    Front.Shear.Velocity = Shear.Velocity.Front..m.s.,
+    Back.Shear.Velocity = Shear.Velocity.Back..m.s.)
 
 str(Floom)
 

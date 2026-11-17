@@ -177,6 +177,15 @@ MCMCplot(out,
 
 
 
+MCMCplot(out,
+         params = c("gamma0","gamma1","gamma2","gamma3","gamma4","gamma5"),
+         ISB = TRUE, exact = TRUE, main = "", ci = c(85, 95),
+         xlab = "Parameter Estimate (logit scale)",
+         col = c("black", "#009E73", "#009E73", "#56B4E9", "#56B4E9", "#CC79A7"),
+         labels = c("Intercept (low slope & no subst)", "Medium slope (vs Low)",
+                    "High slope (vs Low)", "Sand (vs None)", "Gravel (vs None)",
+                    "z-Shear stress"),
+         guide_lines = TRUE)
 
 library(MCMCvis)
 library(ggplot2)
@@ -217,7 +226,7 @@ ggplot(d, aes(y = trial_f, x = med, colour = col_grp, shape = shp_grp)) +
 sims <- out$sims.list   # posterior draws for each parameter
 
 # Shear values to predict across (z-scored, same scale as the model)
-shear_seq <- seq(min(dat$Mean.Shear), max(dat$Mean.Shear), length.out = 100)
+shear_seq <- seq(min(dat$z_Shear), max(dat$z_Shear), length.out = 100)
 
 # Helper: predicted % removal across shear for one intercept
 # (rock random effect u set to 0, i.e., an "average" rock)
@@ -453,6 +462,8 @@ mean(front_data, na.rm = TRUE)
 mean(back_data, na.rm = TRUE)
 
 
+
+
 # Extract Front and Back into separate vectors for Shear Velocity
 front_data <- Front.Back$Shear.Velocity[Front.Back$Position == "Front"]
 back_data  <- Front.Back$Shear.Velocity[Front.Back$Position == "Back"]
@@ -512,6 +523,9 @@ mean(back_data, na.rm = TRUE)
 
 plot(x = Front.Back$Shear.Stress, y = Front.Back$Shear.Velocity)
 
+# Sensitivity analysis, seeing if good vs "bad" quality data follow similar trend
+plot(Front.Back$Shear.Stress, Front.Back$Percent.Change.in.AFDM)
+plot(Quality$Shear.Stress, Quality$Percent.Change.in.AFDM)
 
 # DIATOM MODEL-----------------------------------------------------------------
 resp <- "Percent.Change.in.Diatoms"

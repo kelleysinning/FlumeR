@@ -5,7 +5,7 @@ model {
     b[i] <- (1 - mu[i]) * phi
     logit(mu[i]) <- gamma0 + gamma1*slopeMedInd[i] + gamma2*slopeHighInd[i] +
       gamma3*SandInd[i] + gamma4*GravelInd[i] + gamma5*Shear[i] + 
-      gamma6[Trial[i]]*FrontInd[i] #+ 
+      gamma6[Trial[i]]*FrontInd[i] # Using trial as an interaction term
   } 
   
   # Priors
@@ -13,7 +13,7 @@ model {
   gamma3 ~ dnorm(0, 0.001); gamma4 ~ dnorm(0, 0.001); gamma5 ~ dnorm(0, 0.001)
   
   for (j in 1:9) {  
-    gamma6[j] ~ dnorm(lambda, tau) 
+    gamma6[j] ~ dnorm(lambda, tau) # random effect
     
   } 
   lambda ~  dnorm(0, 0.001) 
