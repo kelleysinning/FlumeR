@@ -525,7 +525,8 @@ mean(back_data, na.rm = TRUE)
 plot(x = Front.Back$Shear.Stress, y = Front.Back$Shear.Velocity)
 
 # Sensitivity analysis, seeing if good vs "bad" quality data follow similar trend
-plot(Front.Back$Shear.Stress, Front.Back$Percent.Change.in.AFDM)
+plot(Front.Back$Shear.Stress, Front.Back$Percent.Change.in.AFDM,
+     ylim = c(-100, 300))
 plot(Quality$Shear.Stress, Quality$Percent.Change.in.AFDM)
 
 plot(Front.Back$Shear.Stress, Front.Back$Percent.Change.in.Diatoms)

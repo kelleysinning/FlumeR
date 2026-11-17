@@ -21,6 +21,10 @@ library(multcompView)
 # Set working directory 
 setwd("~/Library/CloudStorage/OneDrive-TheUniversityofMontana/Flume experiment/Data/FlumeR")
 Front.Back <- read.csv("Front.Back.csv")
+Quality <- read.csv("Front.Back_GoodQuality.csv")
+
+
+
 
 Front.Back <- Front.Back %>%
   mutate(
@@ -67,6 +71,9 @@ Front.Back$Sediment.Type <- factor(Front.Back$Sediment.Type,
                                    levels = c("None", "Sand", "Gravel"))
 Front.Back$Position <- factor(Front.Back$Position, levels = c("Front", "Back"))
 
+
+
+
 # Making averaged trial df
 Front.Back.Trial.Summary <- Front.Back %>%
   group_by(Trial, Slope, Sediment.Type) %>%
@@ -89,6 +96,34 @@ Front.Back.Trial.Summary <- Front.Back.Trial.Summary %>%
 
 
 
+
+# Evaluating quality 
+
+Quality <- Quality %>%
+  mutate(
+    across(starts_with("X..Change"), ~ as.numeric(as.character(.)))
+  )%>%
+  rename(
+    Trial = Trial..,   # old name = a → new name = new_a
+    Percent.Change.Mat.Thickness = X..Change.Mat.Thickness,
+    Percent.Change.in.Diatoms = X..Change.in.Diatom,
+    Percent.Change.in.AFDM = X..Change.AFDM,
+    Shear.Stress = Shear.Stress..Pa.,
+    Shear.Velocity = Shear.Velocity..m.s.)
+
+Quality <- Quality %>% # adding a column with z-scored shear stress 
+  group_by(Trial, Position) %>%
+  mutate(z_Shear = as.numeric(scale(Shear.Stress))) %>%
+  ungroup()
+
+
+Quality$Trial <- factor(Quality$Trial)
+Quality$Slope <- factor(Quality$Slope, levels = c("Low", "Medium", "High"))
+Quality$Sediment.Type <- factor(Quality$Sediment.Type,
+                                levels = c("None", "Sand ", "Gravel"))
+
+
+
 # Trials on x--------------------------------
 
 # AFDM
@@ -101,8 +136,8 @@ ggplot(Front.Back.Trial.Summary, aes(x = Mean.Trial.Shear,
    #            alpha = 0.7,
     #           outlier.shape = NA) +
   geom_point(size = 5)+
-  labs(x = "Trial",
-       y = "% Change",
+  labs(x = "Shear",
+       y = "% AFDM Removed",
        shape = "Sediment Type",
        #fill = "Sediment.Type",
        color = "Slope") +
@@ -110,19 +145,35 @@ ggplot(Front.Back.Trial.Summary, aes(x = Mean.Trial.Shear,
   scale_color_brewer(palette = "Set2") +
   theme_classic()
 
-# Diatom
+ggplot(Front.Back.Trial.Summary, aes(x = Mean.Trial.Shear, # prettier version of above
+                                     y = Mean.Trial.AFDM.Percent.Removal,
+                                     color = Sediment.Type,
+                                     fill = Sediment.Type,
+                                     shape = Slope,
+                                     group = Sediment.Type)) +
+  geom_line() +
+  geom_point(size = 5) +
+  scale_shape_manual(values = c(21, 24, 22)) +   # circle, triangle, square
+  labs(x = "Mean shear stress (Pa)",
+       y = "% AFDM Removed",
+       color = "Sediment Type",
+       fill = "Sediment Type",
+       shape = "Sediment Type") +
+  scale_fill_brewer(palette = "Set2") +
+  scale_color_brewer(palette = "Set2") +
+  theme_classic()
 
-ggplot(Front.Back.Trial.Summary, aes(x = Mean.Trial.Shear,
-                                     y = Mean.Trial.Diatom.Removal,
+# A bit of QAQC for out "low quality" data
+# All values
+ggplot(Front.Back, aes(x = Shear.Stress,
+                                     y = Percent.Change.in.AFDM,
                                      color = Slope,
                                      shape = Sediment.Type,
                                      fill = Sediment.Type)) +
-  #geom_boxplot(position = position_dodge(width = 0.8),
-  #            alpha = 0.7,
-  #           outlier.shape = NA) +
   geom_point(size = 5)+
-  labs(x = "Trial",
-       y = "% Change",
+  coord_cartesian(ylim = c(-100, 250)) +
+  labs(x = "Shear",
+       y = "% AFDM Removed",
        shape = "Sediment Type",
        #fill = "Sediment.Type",
        color = "Slope") +
@@ -130,7 +181,75 @@ ggplot(Front.Back.Trial.Summary, aes(x = Mean.Trial.Shear,
   scale_color_brewer(palette = "Set2") +
   theme_classic()
 
+# only clean data
+ggplot(Quality, aes(x = Shear.Stress,
+                                     y = Percent.Change.in.AFDM,
+                                     color = Slope,
+                                     shape = Sediment.Type,
+                                     fill = Sediment.Type)) +
+  geom_point(size = 5)+
+  labs(x = "Shear",
+       y = "% AFDM Removed",
+       shape = "Sediment Type",
+       #fill = "Sediment.Type",
+       color = "Slope") +
+  scale_fill_brewer(palette = "Set2") +
+  scale_color_brewer(palette = "Set2") +
+  theme_classic()
 
+# Diatom-------------
+
+ggplot(Front.Back.Trial.Summary, aes(x = Mean.Trial.Shear, 
+                                     y = Mean.Trial.Diatom.Percent.Removal,
+                                     color = Sediment.Type,
+                                     fill = Sediment.Type,
+                                     shape = Slope,
+                                     group = Sediment.Type)) +
+  geom_line() +
+  geom_point(size = 5) +
+  scale_shape_manual(values = c(21, 24, 22)) +   # circle, triangle, square
+  labs(x = "Mean shear stress (Pa)",
+       y = "% Diatom Removed",
+       color = "Sediment Type",
+       fill = "Sediment Type",
+       shape = "Sediment Type") +
+  scale_fill_brewer(palette = "Set2") +
+  scale_color_brewer(palette = "Set2") +
+  theme_classic()
+
+# A bit of QAQC for out "low quality" data
+# All values
+ggplot(Front.Back, aes(x = Shear.Stress,
+                       y = Percent.Change.in.Diatoms,
+                       color = Slope,
+                       shape = Sediment.Type,
+                       fill = Sediment.Type)) +
+  geom_point(size = 5)+
+  coord_cartesian(ylim = c(-100, 0)) +
+  labs(x = "Shear",
+       y = "% Diatom Removed",
+       shape = "Sediment Type",
+       #fill = "Sediment.Type",
+       color = "Slope") +
+  scale_fill_brewer(palette = "Set2") +
+  scale_color_brewer(palette = "Set2") +
+  theme_classic()
+
+# only clean data
+ggplot(Quality, aes(x = Shear.Stress,
+                    y = Percent.Change.in.Diatoms,
+                    color = Slope,
+                    shape = Sediment.Type,
+                    fill = Sediment.Type)) +
+  geom_point(size = 5)+
+  labs(x = "Shear",
+       y = "% Diatom Removed",
+       shape = "Sediment Type",
+       #fill = "Sediment.Type",
+       color = "Slope") +
+  scale_fill_brewer(palette = "Set2") +
+  scale_color_brewer(palette = "Set2") +
+  theme_classic()
 # Sediment on X-----------------------------
 
 # % change AFDM boxplots
@@ -148,8 +267,17 @@ ggplot(Front.Back, aes(x = Sediment.Type, y = adjusted_Percent.Change.in.AFDM, f
 
 
 # % change Diatom boxplots
-ggplot(Front.Back, aes(x = Sediment.Type, y = adjusted_Percent.Change.in.Diatoms, fill = Slope, color = Slope)) +
-  geom_boxplot(position = position_dodge2(width = 0.8), alpha = 0.7, outlier.shape = NA) +
+Front.Back <- Front.Back %>% # adding a column with z-scored shear stress 
+  group_by(Rock) %>%
+  mutate(
+    Mean.Shear = mean(Shear.Stress)) %>%
+  ungroup()
+
+Diatoms.Rock <- Front.Back %>%
+  filter(Position == "Front")    # use whichever label you want to keep
+
+ggplot(Diatoms.Rock, aes(x = Sediment.Type, y = adjusted_Percent.Change.in.Diatoms, fill = Slope, color = Slope)) +
+  geom_boxplot(position = position_dodge2(width = 0.8), alpha = 0.7, outlier.shape = 17) +
   geom_jitter(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
               alpha = 0.5, size = 1.5) +
   facet_wrap(~ Slope, scales = "free_y") +
@@ -181,7 +309,7 @@ ggplot(Front.Back, aes(x = Slope.num,
                        y = adjusted_Percent.Change.in.AFDM,
                        fill = Sediment.Type,
                        color = Sediment.Type)) +
-  #geom_jitter(width = 0.1, height = 0, size = 1.5, alpha = 0.5) +
+  geom_jitter(width = 0.1, height = 0, size = 1.5, alpha = 0.5) +
   scale_x_continuous(limits = c(3.0, NA), expand = expansion(mult = c(0, 0.05))) +
   geom_smooth(method = "lm", se = TRUE, alpha = 0.2) +
   labs(x = "% Slope", y = "% AFDM Removed",
@@ -210,9 +338,18 @@ ggplot(Front.Back.Trial.Summary, aes(x = Slope.num,
 
 
 
-# % change Diatom boxplots
-ggplot(Front.Back, aes(x = Slope, y = adjusted_Percent.Change.in.Diatoms, fill = Sediment.Type, color = Sediment.Type)) +
-  geom_boxplot(position = position_dodge2(width = 0.8), alpha = 0.7, outlier.shape = 17) +
+# % change Diatom boxplots----
+Front.Back <- Front.Back %>% # adding a column with z-scored shear stress 
+  group_by(Rock) %>%
+  mutate(
+    Mean.Shear = mean(Shear.Stress)) %>%
+  ungroup()
+
+Diatoms.Rock <- Front.Back %>%
+  filter(Position == "Front")    # use whichever label you want to keep
+
+ggplot(Diatoms.Rock, aes(x = Slope, y = adjusted_Percent.Change.in.Diatoms, fill = Sediment.Type, color = Sediment.Type)) +
+  geom_boxplot(position = position_dodge2(width = 0.8), alpha = 0.7, outlier.shape = NA) +
   geom_jitter(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
               size = 1.5,
               alpha = 0.5) +
@@ -255,5 +392,11 @@ ggplot(Front.Back.Trial.Summary, aes(x = Slope.num,
   scale_fill_brewer(palette = "Set2") +
   scale_color_brewer(palette = "Set2") +
   theme(legend.position = "top")
+
+
+
+
+
+
 
 
