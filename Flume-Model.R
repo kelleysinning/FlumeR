@@ -94,6 +94,7 @@ Quality <- Quality %>% # adding a column with z-scored shear stress
   mutate(z_Shear = as.numeric(scale(Shear.Stress))) %>%
   ungroup()
 
+
 Quality$Trial <- factor(Quality$Trial)
 Quality$Slope <- factor(Quality$Slope, levels = c("Low", "Medium", "High"))
 Quality$Sediment.Type <- factor(Quality$Sediment.Type,
@@ -527,6 +528,11 @@ plot(x = Front.Back$Shear.Stress, y = Front.Back$Shear.Velocity)
 plot(Front.Back$Shear.Stress, Front.Back$Percent.Change.in.AFDM)
 plot(Quality$Shear.Stress, Quality$Percent.Change.in.AFDM)
 
+plot(Front.Back$Shear.Stress, Front.Back$Percent.Change.in.Diatoms)
+plot(Quality$Shear.Stress, Quality$Percent.Change.in.Diatoms)
+
+hist(Front.Back$Shear.Stress)
+hist(Quality$Shear.Stress)
 # DIATOM MODEL-----------------------------------------------------------------
 resp <- "Percent.Change.in.Diatoms"
 
